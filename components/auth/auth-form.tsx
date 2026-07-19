@@ -11,8 +11,18 @@ const initialState: ActionResult = { error: null };
 
 export function AuthForm() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const action = mode === "signin" ? signIn : signUp;
-  const [state, formAction, isPending] = useActionState(action, initialState);
+  const [signInState, signInFormAction, isSigningIn] = useActionState(
+    signIn,
+    initialState
+  );
+  const [signUpState, signUpFormAction, isSigningUp] = useActionState(
+    signUp,
+    initialState
+  );
+
+  const state = mode === "signin" ? signInState : signUpState;
+  const formAction = mode === "signin" ? signInFormAction : signUpFormAction;
+  const isPending = mode === "signin" ? isSigningIn : isSigningUp;
 
   return (
     <div className="w-full max-w-sm">

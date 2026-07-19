@@ -21,8 +21,18 @@ const initialState: ActionResult = { error: null };
 
 export function OnboardingForm() {
   const [mode, setMode] = useState<"create" | "join">("create");
-  const action = mode === "create" ? createHouseholdAction : joinHouseholdAction;
-  const [state, formAction, isPending] = useActionState(action, initialState);
+  const [createState, createFormAction, isCreating] = useActionState(
+    createHouseholdAction,
+    initialState
+  );
+  const [joinState, joinFormAction, isJoining] = useActionState(
+    joinHouseholdAction,
+    initialState
+  );
+
+  const state = mode === "create" ? createState : joinState;
+  const formAction = mode === "create" ? createFormAction : joinFormAction;
+  const isPending = mode === "create" ? isCreating : isJoining;
 
   return (
     <div className="w-full max-w-sm space-y-4">
