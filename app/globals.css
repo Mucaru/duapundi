@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  /* Base -- clean & trustworthy */
+  --background: #f7f9f7;
+  --surface: #ffffff;
+  --surface-muted: #eef2ef;
+  --ink: #1a2e28;
+  --ink-muted: #5c6d67;
+  --border: #dfe6e2;
+
+  --primary: #1f5c4e;
+  --primary-foreground: #ffffff;
+
+  /* Warm personal accent -- dipakai TERBATAS (greeting, streak, highlight) */
+  --accent-warm: #d88c6b;
+  --accent-warm-soft: #f6e5db;
+
+  --income: #2e7d5b;
+  --income-soft: #e4f2ea;
+  --expense: #b5533c;
+  --expense-soft: #f7e6e1;
+
+  --danger: #c0392b;
+  --ring: #1f5c4e;
+  --radius: 1rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--ink);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-warm-soft: var(--accent-warm-soft);
+  --color-income: var(--income);
+  --color-income-soft: var(--income-soft);
+  --color-expense: var(--expense);
+  --color-expense-soft: var(--expense-soft);
+  --color-danger: var(--danger);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-jakarta);
+}
+
+body {
+  background: var(--background);
+  color: var(--ink);
+  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
