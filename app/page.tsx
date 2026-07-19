@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/actions/auth";
-import { Button } from "@/components/ui/button";
+import { HomeClient } from "@/components/home-client";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -19,20 +18,5 @@ export default async function HomePage() {
 
   if (!profile?.household_id) redirect("/onboarding");
 
-  return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-6 text-center">
-      <p className="font-display text-2xl font-semibold text-ink">
-        Halo, {profile.name} 👋
-      </p>
-      <p className="text-sm text-ink-muted">
-        Household kamu sudah siap. Bagian catat transaksi menyusul di tahap
-        berikutnya.
-      </p>
-      <form action={signOut}>
-        <Button variant="outline" type="submit">
-          Keluar
-        </Button>
-      </form>
-    </main>
-  );
+  return <HomeClient fallbackName={profile.name} />;
 }

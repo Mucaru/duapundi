@@ -1,0 +1,120 @@
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db/schema";
+import { formatIDR } from "@/lib/utils";
+import type { Category } from "@/types";
+
+interface TransactionListProps {
+  householdId: string;
+  categories: Category[];
+}
+
+function formatDateLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  if (dateStr === today) return "Hari ini";
+  if (dateStr === yesterday) return "Kemarin";
+  return date.toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+export function TransactionList({ householdId, categories }: TransactionListProps) {
+  const pendingIds = useLiveQuery(async () => {
+    const items = await db.sync_queue.where("entity").equals("transaction").toArray();
+    return new Set(items.map((i) => i.entity_id));
+  }, []);
+
+  const transactions = useLiveQuery(
+    () =>
+      db.transactions
+        .where("household_id")
+        .equals(householdId)
+        .filter((t) => t.deleted_at === null)
+        .reverse()
+        .sortBy("date"),
+    [householdId]
+  );
+
+  if (!transactions) {
+    return <p className="px-6 text-sm text-ink-muted">Memuat...</p>;
+  }
+
+  if (transactions.length === 0) {
+    return (
+      <div className="px-6 py-16 text-center">
+        <p className="text-sm text-ink-muted">
+          Belum ada transaksi. Tap tombol + untuk mulai catat.
+        </p>
+      </div>
+    );
+  }
+
+  // Group by date
+  const groups = transactions.reduce<Record<string, typeof transactions>>(
+    (acc, tx) => {
+      (acc[tx.date] ??= []).push(tx);
+      return acc;
+    },
+    {}
+  );
+
+  return (
+    <div className="space-y-6 px-6 pb-28">
+      {Object.entries(groups).map(([date, txs]) => (
+        <div key={date}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            {formatDateLabel(date)}
+          </p>
+          <div className="space-y-1">
+            {txs.map((tx) => {
+              const category = categories.find((c) => c.id === tx.category_id);
+              const isPending = pendingIds?.has(tx.id) ?? false;
+              return (
+                <div
+                  key={tx.id}
+                  className="flex items-center gap-3 rounded-2xl bg-surface px-3 py-3"
+                >
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                    style={{
+                      backgroundColor: `${category?.color ?? "#999"}22`,
+                      color: category?.color ?? "#999",
+                    }}
+                  >
+                    {category?.name.charAt(0) ?? "?"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ink">
+                      {category?.name ?? "Tanpa kategori"}
+                    </p>
+                    {tx.note && (
+                      <p className="truncate text-xs text-ink-muted">{tx.note}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p
+                      className={`text-sm font-semibold tabular-nums ${
+                        tx.type === "income" ? "text-income" : "text-expense"
+                      }`}
+                    >
+                      {tx.type === "income" ? "+" : "-"}
+                      {formatIDR(tx.amount)}
+                    </p>
+                    {isPending && (
+                      <p className="text-[10px] text-accent-warm">Belum sync</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

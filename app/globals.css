@@ -73,3 +73,21 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+@keyframes sheet-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheet-overlay[data-state="open"] {
+  animation: sheet-fade-in 180ms ease-out;
+}
+
+.sheet-content[data-state="open"] {
+  animation: sheet-slide-up 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
