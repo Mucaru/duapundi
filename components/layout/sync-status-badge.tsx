@@ -4,17 +4,23 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db/schema";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useIsSyncing } from "@/hooks/use-is-syncing";
+import { MAX_RETRY } from "@/lib/sync/push";
 import { cn } from "@/lib/utils";
 
 export function SyncStatusBadge() {
   const isOnline = useOnlineStatus();
   const isSyncing = useIsSyncing();
-  const pendingCount = useLiveQuery(() => db.sync_queue.count(), []) ?? 0;
+  const queueItems = useLiveQuery(() => db.sync_queue.toArray(), []) ?? [];
+  const pendingCount = queueItems.length;
+  const stuckCount = queueItems.filter((i) => i.retry_count >= MAX_RETRY).length;
 
   let label = "Tersambung";
   let dotClass = "bg-income";
 
-  if (!isOnline) {
+  if (stuckCount > 0) {
+    label = `${stuckCount} gagal sync — cek koneksi`;
+    dotClass = "bg-danger";
+  } else if (!isOnline) {
     label = pendingCount > 0 ? `Offline · ${pendingCount} belum sync` : "Offline";
     dotClass = "bg-ink-muted";
   } else if (isSyncing) {

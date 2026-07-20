@@ -1,7 +1,6 @@
 import { db } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/types";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 /**
  * Merge satu row transaksi yang datang dari server (baik lewat Realtime
@@ -36,12 +35,10 @@ export async function mergeRemoteTransaction(remote: Transaction): Promise<void>
   // push engine kita sendiri yang akan mendorong versi lokal ini ke server.
 }
 
-let channel: RealtimeChannel | null = null;
-
 export function subscribeRealtime(householdId: string): () => void {
   const supabase = createClient();
 
-  channel = supabase
+  const channel = supabase
     .channel(`household:${householdId}:transactions`)
     .on(
       "postgres_changes",
@@ -59,10 +56,7 @@ export function subscribeRealtime(householdId: string): () => void {
     .subscribe();
 
   return () => {
-    if (channel) {
-      supabase.removeChannel(channel);
-      channel = null;
-    }
+    supabase.removeChannel(channel);
   };
 }
 

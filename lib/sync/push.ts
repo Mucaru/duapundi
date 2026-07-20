@@ -2,7 +2,7 @@ import { db } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/client";
 import type { SyncQueueItem, Transaction } from "@/types";
 
-const MAX_RETRY = 8;
+export const MAX_RETRY = 8;
 
 /** Backoff eksponensial ringan: 2s, 4s, 8s, ... maksimal 2 menit. */
 function backoffMs(retryCount: number): number {

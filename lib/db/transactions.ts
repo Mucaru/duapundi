@@ -1,4 +1,3 @@
-import { nanoid } from "nanoid";
 import { db } from "./schema";
 import type { Transaction } from "@/types";
 
@@ -11,6 +10,12 @@ import type { Transaction } from "@/types";
  * Pola tiap fungsi: (1) tulis ke tabel data lokal, (2) tulis entry ke
  * sync_queue, dalam SATU Dexie transaction supaya atomic — kalau salah
  * satu gagal, keduanya di-rollback (gak ada state yatim piatu).
+ *
+ * PENTING: ID transaksi HARUS berformat UUID valid (pakai
+ * crypto.randomUUID(), bukan nanoid() atau generator string bebas
+ * lainnya) karena kolom `id` di Postgres bertipe `uuid`. ID non-UUID
+ * akan bikin insert selalu ditolak server — silent failure yang
+ * bikin transaksi nyangkut selamanya di sync_queue.
  */
 
 interface CreateTransactionInput {
@@ -29,7 +34,7 @@ export async function createTransactionLocal(
 ): Promise<Transaction> {
   const now = new Date().toISOString();
   const tx: Transaction = {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     household_id: input.household_id,
     wallet_id: input.wallet_id,
     category_id: input.category_id,
