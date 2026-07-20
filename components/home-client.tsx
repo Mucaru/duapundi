@@ -7,6 +7,7 @@ import { QuickAddSheet } from "@/components/transaction/quick-add-sheet";
 import { TransactionList } from "@/components/transaction/transaction-list";
 import { SyncStatusBadge } from "@/components/layout/sync-status-badge";
 import { SyncProvider } from "@/components/providers/sync-provider";
+import { InviteSheet } from "@/components/household/invite-sheet";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/actions/auth";
 
@@ -52,6 +53,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
           {household.name}
         </p>
         <div className="flex items-center gap-2">
+          <InviteSheet />
           <SyncStatusBadge />
           <form action={signOut}>
             <Button variant="ghost" size="sm" type="submit">
