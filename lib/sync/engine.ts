@@ -1,5 +1,5 @@
 import { flushQueue } from "./push";
-import { reconcileTransactions, subscribeRealtime } from "./pull";
+import { reconcileAll, subscribeRealtime } from "./pull";
 import { setSyncing } from "./status";
 
 const POLL_INTERVAL_MS = 15_000;
@@ -41,7 +41,7 @@ export function startSyncEngine(householdId: string): SyncHandle {
     if (stopped || !navigator.onLine) return;
     setSyncing(true);
     try {
-      await reconcileTransactions(householdId);
+      await reconcileAll(householdId);
       await flushQueue();
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {

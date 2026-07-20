@@ -1,12 +1,24 @@
 import { db } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/client";
-import type { SyncQueueItem, Transaction } from "@/types";
+import type { SyncQueueItem, SyncEntity } from "@/types";
 
 export const MAX_RETRY = 8;
 
 /** Backoff eksponensial ringan: 2s, 4s, 8s, ... maksimal 2 menit. */
 function backoffMs(retryCount: number): number {
   return Math.min(2000 * 2 ** retryCount, 120_000);
+}
+
+async function updateLocalTimestamp(
+  entity: SyncEntity,
+  id: string,
+  updatedAt: string
+): Promise<void> {
+  if (entity === "transaction") {
+    await db.transactions.update(id, { updated_at: updatedAt });
+  } else if (entity === "category") {
+    await db.categories.update(id, { updated_at: updatedAt });
+  }
 }
 
 /**
@@ -20,11 +32,10 @@ function backoffMs(retryCount: number): number {
  */
 async function processItem(item: SyncQueueItem): Promise<boolean> {
   const supabase = createClient();
+  const table = item.entity === "transaction" ? "transactions" : item.entity === "category" ? "categories" : null;
 
-  if (item.entity !== "transaction") {
-    // Entity lain (category/wallet/budget) belum ditangani sync engine —
-    // di luar scope MVP saat ini (kategori/wallet masih read-only setelah
-    // bootstrap). Buang dari queue supaya gak nyangkut selamanya.
+  if (!table) {
+    // wallet/budget belum ditangani sync engine — di luar scope MVP saat ini.
     return true;
   }
 
@@ -34,15 +45,13 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
       delete payload.updated_at; // biar trigger server yang isi, bukan client
 
       const { data, error } = await supabase
-        .from("transactions")
+        .from(table)
         .insert(payload)
         .select()
         .single();
 
       if (error) throw error;
-      await db.transactions.update(item.entity_id, {
-        updated_at: (data as Transaction).updated_at,
-      });
+      await updateLocalTimestamp(item.entity, item.entity_id, (data as { updated_at: string }).updated_at);
       return true;
     }
 
@@ -53,36 +62,32 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
       delete payload.created_at;
 
       const { data, error } = await supabase
-        .from("transactions")
+        .from(table)
         .update(payload)
         .eq("id", item.entity_id)
         .select()
         .single();
 
       if (error) throw error;
-      await db.transactions.update(item.entity_id, {
-        updated_at: (data as Transaction).updated_at,
-      });
+      await updateLocalTimestamp(item.entity, item.entity_id, (data as { updated_at: string }).updated_at);
       return true;
     }
 
     if (item.operation === "delete") {
-      // Soft delete di server juga — tombstone, bukan hard delete.
       const { data, error } = await supabase
-        .from("transactions")
+        .from(table)
         .update({
           deleted_at: item.payload.deleted_at,
-          edited_by_user_id: (item.payload as { edited_by_user_id?: string })
-            .edited_by_user_id,
+          ...(item.entity === "transaction"
+            ? { edited_by_user_id: (item.payload as { edited_by_user_id?: string }).edited_by_user_id }
+            : {}),
         })
         .eq("id", item.entity_id)
         .select()
         .single();
 
       if (error) throw error;
-      await db.transactions.update(item.entity_id, {
-        updated_at: (data as Transaction).updated_at,
-      });
+      await updateLocalTimestamp(item.entity, item.entity_id, (data as { updated_at: string }).updated_at);
       return true;
     }
 

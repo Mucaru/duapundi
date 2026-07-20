@@ -8,6 +8,7 @@ import { TransactionList } from "@/components/transaction/transaction-list";
 import { SyncStatusBadge } from "@/components/layout/sync-status-badge";
 import { SyncProvider } from "@/components/providers/sync-provider";
 import { InviteSheet } from "@/components/household/invite-sheet";
+import { CategoryManagerSheet } from "@/components/category/category-manager-sheet";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/actions/auth";
 
@@ -48,11 +49,12 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
   return (
     <main className="min-h-svh bg-background pb-6">
       <SyncProvider householdId={household.id} />
-      <div className="flex items-center justify-between px-6 pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-3 px-6 pt-6">
         <p className="font-display text-lg font-semibold text-ink">
           {household.name}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <CategoryManagerSheet householdId={household.id} />
           <InviteSheet />
           <SyncStatusBadge />
           <form action={signOut}>

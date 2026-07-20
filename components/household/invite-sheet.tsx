@@ -39,7 +39,7 @@ export function InviteSheet() {
       <SheetTrigger asChild>
         <Button variant="ghost" size="sm">
           <Users className="h-4 w-4" />
-          Undang
+          <span className="hidden sm:inline">Undang</span>
         </Button>
       </SheetTrigger>
       <SheetContent>
