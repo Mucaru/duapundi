@@ -1,10 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { useHousehold } from "@/hooks/use-household";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { BalanceCard } from "@/components/summary/balance-card";
 import { QuickAddSheet } from "@/components/transaction/quick-add-sheet";
 import { TransactionList } from "@/components/transaction/transaction-list";
+import {
+  TransactionFilters,
+  dateRangeToBounds,
+  type DateRangeFilter,
+} from "@/components/transaction/transaction-filters";
 import { SyncStatusBadge } from "@/components/layout/sync-status-badge";
 import { SyncProvider } from "@/components/providers/sync-provider";
 import { InviteSheet } from "@/components/household/invite-sheet";
@@ -19,6 +25,8 @@ interface HomeClientProps {
 export function HomeClient({ fallbackName }: HomeClientProps) {
   const { ready, bootstrapError, household, wallets, categories } = useHousehold();
   const { userId } = useCurrentUser();
+  const [dateRange, setDateRange] = useState<DateRangeFilter>("this_month");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   if (!ready) {
     return (
@@ -67,8 +75,21 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
 
       <BalanceCard householdId={household.id} greetingName={fallbackName} />
 
-      <div className="mt-6">
-        <TransactionList householdId={household.id} categories={categories} />
+      <div className="mt-6 space-y-4">
+        <TransactionFilters
+          categories={categories}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          categoryId={categoryFilter}
+          onCategoryChange={setCategoryFilter}
+        />
+        <TransactionList
+          householdId={household.id}
+          categories={categories}
+          dateFrom={dateRangeToBounds(dateRange).from}
+          dateTo={dateRangeToBounds(dateRange).to}
+          categoryId={categoryFilter}
+        />
       </div>
 
       {userId && (

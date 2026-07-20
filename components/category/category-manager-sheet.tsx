@@ -67,7 +67,7 @@ export function CategoryManagerSheet({ householdId }: CategoryManagerSheetProps)
           <span className="hidden sm:inline">Kategori</span>
         </Button>
       </SheetTrigger>
-      <SheetContent className="max-h-[85svh] overflow-y-auto">
+      <SheetContent>
         <SheetTitle className="font-display text-xl font-semibold text-ink">
           Kelola kategori
         </SheetTitle>

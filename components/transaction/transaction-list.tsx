@@ -8,6 +8,9 @@ import type { Category } from "@/types";
 interface TransactionListProps {
   householdId: string;
   categories: Category[];
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  categoryId?: string | null;
 }
 
 function formatDateLabel(dateStr: string): string {
@@ -23,7 +26,13 @@ function formatDateLabel(dateStr: string): string {
   });
 }
 
-export function TransactionList({ householdId, categories }: TransactionListProps) {
+export function TransactionList({
+  householdId,
+  categories,
+  dateFrom,
+  dateTo,
+  categoryId,
+}: TransactionListProps) {
   const pendingIds = useLiveQuery(async () => {
     const items = await db.sync_queue.where("entity").equals("transaction").toArray();
     return new Set(items.map((i) => i.entity_id));
@@ -34,10 +43,16 @@ export function TransactionList({ householdId, categories }: TransactionListProp
       db.transactions
         .where("household_id")
         .equals(householdId)
-        .filter((t) => t.deleted_at === null)
+        .filter((t) => {
+          if (t.deleted_at !== null) return false;
+          if (dateFrom && t.date < dateFrom) return false;
+          if (dateTo && t.date > dateTo) return false;
+          if (categoryId && t.category_id !== categoryId) return false;
+          return true;
+        })
         .reverse()
         .sortBy("date"),
-    [householdId]
+    [householdId, dateFrom, dateTo, categoryId]
   );
 
   if (!transactions) {
@@ -45,10 +60,13 @@ export function TransactionList({ householdId, categories }: TransactionListProp
   }
 
   if (transactions.length === 0) {
+    const isFiltered = Boolean(dateFrom || dateTo || categoryId);
     return (
       <div className="px-6 py-16 text-center">
         <p className="text-sm text-ink-muted">
-          Belum ada transaksi. Tap tombol + untuk mulai catat.
+          {isFiltered
+            ? "Gak ada transaksi yang cocok sama filter ini."
+            : "Belum ada transaksi. Tap tombol + untuk mulai catat."}
         </p>
       </div>
     );
