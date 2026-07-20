@@ -27,6 +27,11 @@ export function startSyncEngine(householdId: string): SyncHandle {
     setSyncing(true);
     try {
       await flushQueue();
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn("[sync] push cycle error:", err instanceof Error ? err.message : err);
+      }
     } finally {
       setSyncing(false);
     }
@@ -38,6 +43,11 @@ export function startSyncEngine(householdId: string): SyncHandle {
     try {
       await reconcileTransactions(householdId);
       await flushQueue();
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.warn("[sync] full cycle error:", err instanceof Error ? err.message : err);
+      }
     } finally {
       setSyncing(false);
     }

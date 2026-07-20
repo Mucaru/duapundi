@@ -38,8 +38,7 @@ export async function signUp(
   if (error) {
     if (error.code === "over_email_send_rate_limit" || error.message.includes("rate limit")) {
       return {
-        error:
-          "Terlalu banyak percobaan daftar dalam waktu singkat (limit email bawaan Supabase). Tunggu beberapa menit, atau matikan 'Confirm email' sementara di Supabase Auth settings untuk testing.",
+        error: "Terlalu banyak percobaan daftar dalam waktu singkat. Coba lagi dalam beberapa menit.",
       };
     }
     if (error.code === "user_already_exists" || error.message.includes("already registered")) {
@@ -48,7 +47,7 @@ export async function signUp(
     if (error.code === "weak_password" || error.message.includes("Password")) {
       return { error: "Password terlalu lemah. Coba kombinasi yang lebih unik." };
     }
-    return { error: `Gagal daftar: ${error.message}` };
+    return { error: "Gagal daftar. Coba lagi sebentar lagi." };
   }
 
   redirect("/onboarding");

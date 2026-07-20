@@ -91,6 +91,12 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
     // JANGAN log 'err' mentah ke console di production — bisa berisi
     // payload transaksi (data keuangan). Log pesan generik saja.
     const message = err instanceof Error ? err.message : "unknown_error";
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[sync] gagal ${item.operation} transaction (id disembunyikan): ${message}`
+      );
+    }
     await db.sync_queue.update(item.id!, {
       retry_count: item.retry_count + 1,
       last_error: message.slice(0, 200),
