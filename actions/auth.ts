@@ -65,12 +65,32 @@ export async function signIn(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
 
-  if (error) {
+  let signInError: { message: string; name?: string } | null = null;
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    signInError = error;
+  } catch (err) {
+    // fetch mentah gagal (server Next.js gak bisa reach Supabase sama
+    // sekali) — beda kasus dari email/password salah, jangan disamain.
+    signInError = { message: err instanceof Error ? err.message : "network_error" };
+  }
+
+  if (signInError) {
+    const msg = signInError.message.toLowerCase();
+    const isNetworkIssue =
+      signInError.name === "AuthRetryableFetchError" ||
+      msg.includes("fetch failed") ||
+      msg.includes("network") ||
+      msg.includes("enotfound") ||
+      msg.includes("failed to fetch");
+
+    if (isNetworkIssue) {
+      return {
+        error:
+          "Gagal terhubung ke server. Login pertama kali butuh koneksi internet — coba lagi setelah tersambung.",
+      };
+    }
     return { error: "Email atau password salah." };
   }
 
