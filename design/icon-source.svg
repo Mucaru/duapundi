@@ -1,0 +1,10 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#1F5C4E"/>
+  <!-- Badan dompet -->
+  <rect x="112" y="168" width="288" height="208" rx="36" fill="#F7F9F7"/>
+  <!-- Flap/lipatan dompet -->
+  <path d="M112 204c0-19.9 16.1-36 36-36h176c19.9 0 36 16.1 36 36v20H112v-20z" fill="#EEF2EF"/>
+  <!-- Kancing/koin -->
+  <circle cx="336" cy="272" r="30" fill="#D88C6B"/>
+  <circle cx="336" cy="272" r="12" fill="#1F5C4E"/>
+</svg>
