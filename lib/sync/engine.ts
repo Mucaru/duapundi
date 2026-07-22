@@ -1,4 +1,4 @@
-import { flushQueue } from "./push";
+import { flushQueue, resetStuckItems } from "./push";
 import { reconcileAll, subscribeRealtime } from "./pull";
 import { setSyncing } from "./status";
 
@@ -58,8 +58,16 @@ export function startSyncEngine(householdId: string): SyncHandle {
   const handleOnline = () => void runFullCycle();
   window.addEventListener("online", handleOnline);
 
-  // Jalankan sekali di awal kalau kebetulan udah online saat mount.
-  void runFullCycle();
+  async function bootSync() {
+    // Kasih item yang udah exceed max retry kesempatan sekali lagi tiap
+    // app dibuka — berguna kalau akar masalahnya udah kefix (contoh: item
+    // yang stuck karena bug di processItem, sebelum bug itu di-fix).
+    if (navigator.onLine) {
+      await resetStuckItems();
+    }
+    await runFullCycle();
+  }
+  void bootSync();
 
   pollTimer = setInterval(() => void runPushCycle(), POLL_INTERVAL_MS);
 

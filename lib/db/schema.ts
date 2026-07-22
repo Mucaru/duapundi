@@ -48,6 +48,13 @@ export class MoneyTrackerDB extends Dexie {
       // ++id = auto-increment, urutan FIFO untuk diproses sync engine
       sync_queue: "++id, entity, entity_id, client_timestamp",
     });
+
+    // v2: tambah index retry_count di sync_queue — dibutuhkan buat query
+    // "cari item yang udah stuck exceed max retry" (lib/sync/push.ts
+    // resetStuckItems). Dexie migrasi otomatis, data existing user aman.
+    this.version(2).stores({
+      sync_queue: "++id, entity, entity_id, client_timestamp, retry_count",
+    });
   }
 }
 

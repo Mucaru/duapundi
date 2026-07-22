@@ -86,7 +86,14 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // PGRST116 = 0 baris ke-match. Untuk operasi DELETE, ini berarti
+        // row-nya emang udah gak ada di server (misal: pernah dihapus manual
+        // langsung dari database, di luar app). Tujuan delete (row absent
+        // di server) udah tercapai — anggap sukses, jangan retry selamanya.
+        if (error.code === "PGRST116") return true;
+        throw error;
+      }
       await updateLocalTimestamp(item.entity, item.entity_id, (data as { updated_at: string }).updated_at);
       return true;
     }
@@ -108,6 +115,22 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
     });
     return false;
   }
+}
+
+/**
+ * Reset item yang udah exceed MAX_RETRY balik ke retry_count 0, dipanggil
+ * sekali tiap kali sync engine start (app dibuka). Kenapa perlu: item yang
+ * "gagal permanen" bisa aja penyebabnya udah gak berlaku lagi (misal: bug
+ * di processItem-nya sendiri udah kefix lewat update app, atau row yang
+ * ditarget ternyata sekarang udah valid). Tanpa ini, item stuck bakal
+ * nyantol selamanya walau akar masalahnya udah beres.
+ */
+export async function resetStuckItems(): Promise<number> {
+  const stuck = await db.sync_queue.where("retry_count").aboveOrEqual(MAX_RETRY).toArray();
+  for (const item of stuck) {
+    await db.sync_queue.update(item.id!, { retry_count: 0, last_error: null });
+  }
+  return stuck.length;
 }
 
 /**
