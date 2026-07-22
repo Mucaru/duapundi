@@ -64,9 +64,8 @@ export function CategoryManagerSheet({ householdId }: CategoryManagerSheetProps)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Kelola kategori">
           <Tags className="h-4 w-4" />
-          <span className="hidden sm:inline">Kategori</span>
         </Button>
       </SheetTrigger>
       <SheetContent>

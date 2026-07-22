@@ -46,9 +46,8 @@ export function InviteSheet() {
   return (
     <Sheet open={open} onOpenChange={handleOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Undang pasangan">
           <Users className="h-4 w-4" />
-          <span className="hidden sm:inline">Undang</span>
         </Button>
       </SheetTrigger>
       <SheetContent>

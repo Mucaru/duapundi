@@ -21,6 +21,7 @@ import { PinSettingsSheet } from "@/components/pin/pin-settings-sheet";
 import { PinLockScreen } from "@/components/pin/pin-lock-screen";
 import { usePinLock } from "@/hooks/use-pin-lock";
 import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 import { signOut } from "@/actions/auth";
 
 interface HomeClientProps {
@@ -82,8 +83,14 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
           <InviteSheet />
           <SyncStatusBadge />
           <form action={signOut}>
-            <Button variant="ghost" size="sm" type="submit">
-              Keluar
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="bg-surface-muted"
+              type="submit"
+              aria-label="Keluar akun"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </form>
         </div>

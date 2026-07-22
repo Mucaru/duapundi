@@ -71,9 +71,8 @@ export function PinSettingsSheet() {
   return (
     <Sheet open={open} onOpenChange={handleOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Kunci PIN">
           <Lock className="h-4 w-4" />
-          <span className="hidden sm:inline">Kunci</span>
         </Button>
       </SheetTrigger>
       <SheetContent>
