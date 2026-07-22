@@ -6,6 +6,8 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { BalanceCard } from "@/components/summary/balance-card";
 import { QuickAddSheet } from "@/components/transaction/quick-add-sheet";
 import { TransactionList } from "@/components/transaction/transaction-list";
+import { TransactionDetailSheet } from "@/components/transaction/transaction-detail-sheet";
+import type { Transaction } from "@/types";
 import {
   TransactionFilters,
   dateRangeToBounds,
@@ -15,6 +17,9 @@ import { SyncStatusBadge } from "@/components/layout/sync-status-badge";
 import { SyncProvider } from "@/components/providers/sync-provider";
 import { InviteSheet } from "@/components/household/invite-sheet";
 import { CategoryManagerSheet } from "@/components/category/category-manager-sheet";
+import { PinSettingsSheet } from "@/components/pin/pin-settings-sheet";
+import { PinLockScreen } from "@/components/pin/pin-lock-screen";
+import { usePinLock } from "@/hooks/use-pin-lock";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/actions/auth";
 
@@ -25,8 +30,18 @@ interface HomeClientProps {
 export function HomeClient({ fallbackName }: HomeClientProps) {
   const { ready, bootstrapError, household, wallets, categories } = useHousehold();
   const { userId } = useCurrentUser();
+  const { locked, unlock, ready: pinReady } = usePinLock();
   const [dateRange, setDateRange] = useState<DateRangeFilter>("this_month");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+
+  if (!pinReady) {
+    return <main className="min-h-svh bg-background" />;
+  }
+
+  if (locked) {
+    return <PinLockScreen onUnlock={unlock} />;
+  }
 
   if (!ready) {
     return (
@@ -63,6 +78,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
           <CategoryManagerSheet householdId={household.id} />
+          <PinSettingsSheet />
           <InviteSheet />
           <SyncStatusBadge />
           <form action={signOut}>
@@ -89,8 +105,18 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
           dateFrom={dateRangeToBounds(dateRange).from}
           dateTo={dateRangeToBounds(dateRange).to}
           categoryId={categoryFilter}
+          onSelectTransaction={setSelectedTransaction}
         />
       </div>
+
+      {userId && (
+        <TransactionDetailSheet
+          transaction={selectedTransaction}
+          categories={categories}
+          userId={userId}
+          onClose={() => setSelectedTransaction(null)}
+        />
+      )}
 
       {userId && (
         <QuickAddSheet

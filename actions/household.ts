@@ -59,6 +59,18 @@ export async function joinHouseholdAction(
   redirect("/");
 }
 
+export async function leaveHouseholdAction(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("leave_household");
+
+  if (error) {
+    return { error: "Gagal keluar dari household. Coba lagi." };
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/onboarding");
+}
+
 /** Dipanggil dari halaman Settings untuk menampilkan kode undangan ke user. */
 export async function getHouseholdInviteInfo() {
   const supabase = await createClient();

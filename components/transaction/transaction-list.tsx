@@ -3,7 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db/schema";
 import { formatIDR } from "@/lib/utils";
-import type { Category } from "@/types";
+import type { Category, Transaction } from "@/types";
 
 interface TransactionListProps {
   householdId: string;
@@ -11,6 +11,7 @@ interface TransactionListProps {
   dateFrom?: string | null;
   dateTo?: string | null;
   categoryId?: string | null;
+  onSelectTransaction?: (transaction: Transaction) => void;
 }
 
 function formatDateLabel(dateStr: string): string {
@@ -32,6 +33,7 @@ export function TransactionList({
   dateFrom,
   dateTo,
   categoryId,
+  onSelectTransaction,
 }: TransactionListProps) {
   const pendingIds = useLiveQuery(async () => {
     const items = await db.sync_queue.where("entity").equals("transaction").toArray();
@@ -93,9 +95,11 @@ export function TransactionList({
               const category = categories.find((c) => c.id === tx.category_id);
               const isPending = pendingIds?.has(tx.id) ?? false;
               return (
-                <div
+                <button
                   key={tx.id}
-                  className="flex items-center gap-3 rounded-2xl bg-surface px-3 py-3"
+                  type="button"
+                  onClick={() => onSelectTransaction?.(tx)}
+                  className="flex w-full items-center gap-3 rounded-2xl bg-surface px-3 py-3 text-left transition-colors active:bg-surface-muted"
                 >
                   <span
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
@@ -127,7 +131,7 @@ export function TransactionList({
                       <p className="text-[10px] text-accent-warm">Belum sync</p>
                     )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

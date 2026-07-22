@@ -4,25 +4,27 @@ Ditulis setelah MVP (fitur di PRD v1.0) selesai dan lolos test manual offline-sy
 
 ---
 
-## 🔴 Gap Kritis (harus ditutup sebelum dipakai jangka panjang)
+## 🔴 Gap Kritis — STATUS v1.1
 
-### 1. Gak ada UI edit/hapus transaksi
+> Update: keempat item P0 di bawah ini udah dikerjakan di v1.1. Bagian asli dipertahankan sebagai catatan kenapa ini prioritas awalnya.
+
+### 1. ~~Gak ada UI edit/hapus transaksi~~ ✅ Selesai (v1.1)
+Tap transaksi di list sekarang buka `TransactionDetailSheet` — bisa edit nominal/kategori/catatan, atau hapus (dengan konfirmasi).
 Fungsi `updateTransactionLocal` dan `deleteTransactionLocal` udah ada di `lib/db/transactions.ts` (lengkap dengan outbox pattern), tapi **gak ada satupun tombol di UI** yang manggil mereka. Kalau kamu salah ketik nominal atau salah pilih kategori, sekarang **gak ada cara buat betulin** selain langsung ke Supabase Table Editor. Ini gap paling mendesak — realistis bakal langsung kejadian dalam minggu pertama pemakaian.
 
 **Rekomendasi:** tap transaksi di list → buka detail sheet → edit nominal/kategori/catatan atau hapus (dengan konfirmasi).
 
-### 2. Gak ada konfirmasi sebelum aksi destruktif
+### 2. ~~Gak ada konfirmasi sebelum aksi destruktif~~ ✅ Selesai (v1.1)
+`ConfirmDialog` reusable dipakai di delete kategori, delete transaksi, keluar household, dan matiin PIN.
 Hapus kategori (`deleteCategoryLocal`) langsung eksekusi begitu tombol tempat sampah di-tap, gak ada dialog "yakin?". Kalau tanpa sengaja kepencet, kategori hilang (soft-delete sih, jadi teknisnya masih bisa di-restore manual dari database, tapi user gak tau itu).
 
 **Rekomendasi:** confirm dialog sederhana untuk delete kategori & (nanti) delete transaksi.
 
-### 3. Belum ada keputusan soal PIN/biometric lock
-PRD awal nyebut ini sebagai "acceptable risk atau perlu proteksi tambahan" — kita defer keputusannya pas Tahap 6 dan belum pernah balik lagi. IndexedDB gak ter-enkripsi secara default, dan HP yang gak ke-lock bisa langsung buka app kalau session masih aktif.
+### 3. ~~Belum ada keputusan soal PIN/biometric lock~~ ✅ Selesai (v1.1)
+Diputuskan pakai PIN 6 digit app-level (bukan biometric, karena PWA browser gak reliable akses native biometric API). Hash SHA-256 via Web Crypto disimpan di localStorage, dicek ulang tiap kali app disembunyikan lalu di-resume (`visibilitychange`). **Penting: ini gerbang tampilan, bukan enkripsi data** — IndexedDB tetap plain text, dijelaskan eksplisit di UI biar gak ada ekspektasi salah soal level proteksinya.
 
-**Rekomendasi:** untuk app data keuangan personal dipegang berdua, saran aku PIN 4-6 digit di app-level (bukan biometric — biometric butuh native API yang gak reliable di PWA browser) yang muncul tiap kali app dibuka/di-resume, disimpan hash-nya di localStorage.
-
-### 4. Gak ada cara keluar dari household
-Kalau salah invite orang yang salah, atau household perlu di-reset, gak ada tombol "keluar dari household" atau "hapus household". Sekarang cuma bisa diakalin manual lewat database.
+### 4. ~~Gak ada cara keluar dari household~~ ✅ Selesai (v1.1)
+Tombol "Keluar dari household" di `InviteSheet`, dengan `ConfirmDialog` dan RPC `leave_household()` (`SECURITY DEFINER`, cuma clear `household_id` di profile, data household/transaksi gak dihapus).
 
 ---
 
@@ -65,13 +67,13 @@ Sesuai urutan prioritas PRD v1.0 kamu sendiri (Fase 2 & 3):
 
 ## 📋 PRD v1.1 — Prioritas Berikutnya
 
-### P0 (sebelum pemakaian harian serius)
-1. Edit & hapus transaksi (UI)
-2. Confirm dialog untuk aksi destruktif
-3. Keputusan + implementasi PIN lock
-4. Tombol keluar dari household
+### ~~P0 (sebelum pemakaian harian serius)~~ ✅ Semua selesai di v1.1
+1. ~~Edit & hapus transaksi (UI)~~
+2. ~~Confirm dialog untuk aksi destruktif~~
+3. ~~Keputusan + implementasi PIN lock~~
+4. ~~Tombol keluar dari household~~
 
-### P1 (pengalaman harian lebih lengkap)
+### P1 (fokus selanjutnya — pengalaman harian lebih lengkap)
 5. Multi-wallet UI (tambah/edit wallet, pilih wallet pas input transaksi — sekarang hardcoded ke wallet pertama)
 6. Budget per kategori + indikator mendekati limit di kategori terkait
 7. Export CSV
@@ -95,4 +97,4 @@ Sesuai urutan prioritas PRD v1.0 kamu sendiri (Fase 2 & 3):
 
 MVP ini **solid di fondasi** — offline-first dan sync engine-nya udah melewati beberapa bug nyata (ID format, race condition closure, silent failure) dan sekarang provably bekerja di test 2-device. Itu bagian tersulit dan udah kelar dengan benar.
 
-Tapi dari sisi "siap dipakai harian tanpa drama", gap paling nyata adalah **poin P0** — khususnya gak bisa edit/hapus transaksi. Itu bakal jadi hal pertama yang bikin frustrasi begitu ada typo pertama kali. Saran aku: kerjain P0 dulu semua sebelum nambah fitur baru apapun dari Fase 2/3.
+**Update v1.1:** semua gap P0 (edit/hapus transaksi, confirm dialog, PIN lock, keluar household) udah ditutup. App sekarang layak dipakai harian tanpa drama. Fokus berikutnya pindah ke P1 — terutama multi-wallet (biar bisa pisahin dompet pribadi vs bisnis sesuai kebutuhan awal di PRD) dan budget per kategori.

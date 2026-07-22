@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Copy, Check, Users } from "lucide-react";
+import { Copy, Check, Users, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { getHouseholdInviteInfo } from "@/actions/household";
+import { getHouseholdInviteInfo, leaveHouseholdAction } from "@/actions/household";
 
 interface InviteInfo {
   household: { id: string; name: string; invite_code: string } | null;
@@ -16,6 +17,8 @@ export function InviteSheet() {
   const [info, setInfo] = useState<InviteInfo | null>(null);
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [isLeaving, startLeaving] = useTransition();
 
   function handleOpen(next: boolean) {
     setOpen(next);
@@ -32,6 +35,12 @@ export function InviteSheet() {
     await navigator.clipboard.writeText(info.household.invite_code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleLeave() {
+    startLeaving(async () => {
+      await leaveHouseholdAction();
+    });
   }
 
   return (
@@ -86,6 +95,17 @@ export function InviteSheet() {
                 ))}
               </div>
             </div>
+
+            <div className="mt-6 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setConfirmLeave(true)}
+                className="flex items-center gap-1.5 text-xs font-medium text-danger"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Keluar dari household
+              </button>
+            </div>
           </>
         )}
 
@@ -96,6 +116,17 @@ export function InviteSheet() {
           </p>
         )}
       </SheetContent>
+
+      <ConfirmDialog
+        open={confirmLeave}
+        onOpenChange={setConfirmLeave}
+        title="Keluar dari household?"
+        description="Kamu gak akan bisa lihat transaksi household ini lagi sampai join ulang pakai kode undangan. Data yang udah ada tetap aman, gak dihapus."
+        destructive
+        confirmLabel="Keluar"
+        isPending={isLeaving}
+        onConfirm={handleLeave}
+      />
     </Sheet>
   );
 }

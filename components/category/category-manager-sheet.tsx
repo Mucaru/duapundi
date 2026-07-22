@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Star, Trash2, Tags } from "lucide-react";
 import { db } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +37,7 @@ export function CategoryManagerSheet({ householdId }: CategoryManagerSheetProps)
   const [name, setName] = useState("");
   const [color, setColor] = useState(PALETTE[0]);
   const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   const categories = useLiveQuery(
     () =>
@@ -122,7 +124,7 @@ export function CategoryManagerSheet({ householdId }: CategoryManagerSheetProps)
               </button>
               <button
                 type="button"
-                onClick={() => void deleteCategoryLocal(cat.id)}
+                onClick={() => setPendingDelete({ id: cat.id, name: cat.name })}
                 aria-label="Hapus kategori"
               >
                 <Trash2 className="h-4 w-4 text-ink-muted hover:text-danger" />
@@ -169,6 +171,23 @@ export function CategoryManagerSheet({ householdId }: CategoryManagerSheetProps)
           </Button>
         </div>
       </SheetContent>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => !next && setPendingDelete(null)}
+        title="Hapus kategori?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.name}" akan dihapus. Transaksi lama yang pakai kategori ini tetap tersimpan, cuma gak bisa dipilih lagi buat transaksi baru.`
+            : ""
+        }
+        destructive
+        confirmLabel="Hapus"
+        onConfirm={() => {
+          if (pendingDelete) void deleteCategoryLocal(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+      />
     </Sheet>
   );
 }
