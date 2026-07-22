@@ -31,19 +31,21 @@ export function PinPad({ length = 6, onComplete, error }: PinPadProps) {
 
   return (
     <div>
-      <div className={cn("mb-8 flex justify-center gap-3", error && "animate-pulse")}>
+      <div className={cn("mb-10 flex justify-center gap-3", error && "animate-pulse")}>
         {Array.from({ length }).map((_, i) => (
           <span
             key={i}
             className={cn(
-              "h-3.5 w-3.5 rounded-full border-2",
-              i < value.length ? "border-primary bg-primary" : "border-border bg-transparent",
+              "h-4 w-4 rounded-full border-2 transition-colors",
+              i < value.length
+                ? "border-primary bg-primary"
+                : "border-border bg-surface",
               error && "border-danger"
             )}
           />
         ))}
       </div>
-      <div className="mx-auto grid max-w-xs grid-cols-3 gap-3">
+      <div className="mx-auto grid max-w-[280px] grid-cols-3 gap-4">
         {KEYS.map((key, i) => (
           <button
             key={i}
@@ -51,11 +53,13 @@ export function PinPad({ length = 6, onComplete, error }: PinPadProps) {
             disabled={!key}
             onClick={() => press(key)}
             className={cn(
-              "flex h-16 items-center justify-center rounded-2xl text-xl font-semibold text-ink transition-colors",
-              key ? "bg-surface-muted active:bg-border" : "invisible"
+              "flex h-[72px] w-[72px] items-center justify-center rounded-full text-2xl font-semibold text-ink shadow-sm transition-all",
+              key
+                ? "bg-surface border border-border active:scale-95 active:bg-surface-muted"
+                : "invisible"
             )}
           >
-            {key === "del" ? <Delete className="h-5 w-5" /> : key}
+            {key === "del" ? <Delete className="h-5 w-5 text-ink-muted" /> : key}
           </button>
         ))}
       </div>
