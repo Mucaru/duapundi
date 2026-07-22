@@ -7,11 +7,13 @@ Dibangun sebagai proyek personal (bukan demo/challenge) — dipakai beneran seha
 ## ✨ Fitur
 
 - Catat transaksi super cepat (target < 10 detik): pilih kategori → numpad besar → simpan
+- Edit & hapus transaksi (dengan konfirmasi sebelum aksi destruktif)
 - Offline-first penuh — semua fitur inti jalan tanpa internet, sync otomatis di background
-- 2 user per household (kamu & pasangan), invite lewat kode undangan
-- Kategori custom (income/expense), favorit buat quick-add
+- 2 user per household (kamu & pasangan), invite lewat kode undangan, bisa keluar household kapan aja
+- Kategori custom (income/expense), favorit buat quick-add, bisa dihapus
 - Riwayat transaksi dengan filter tanggal & kategori
 - Ringkasan saldo bulan berjalan + streak pencatatan
+- PIN lock app-level (opsional) — diminta ulang tiap kali app dibuka/di-resume
 - Installable sebagai PWA (icon, splash, standalone mode)
 - Real-time sync antar device lewat Supabase Realtime
 
@@ -38,40 +40,41 @@ Detail lengkap ada di komentar kode `lib/sync/push.ts`, `lib/sync/pull.ts`, dan 
 
 ## 🚀 Setup Lokal
 
-\`\`\`bash
+```bash
 npm install
 cp .env.local.example .env.local
 # isi NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY di .env.local
-\`\`\`
+```
 
 Jalankan migration SQL di **Supabase Dashboard → SQL Editor**, urut sesuai nomor:
 
-\`\`\`
+```
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_household_invite.sql
-\`\`\`
+supabase/migrations/0005_leave_household.sql
+```
 
-Lalu aktifkan Realtime di **Supabase Dashboard → Database → Replication** untuk tabel \`transactions\` dan \`categories\` (toggle manual, karena \`ALTER PUBLICATION\` butuh privilege owner yang gak dimiliki role default SQL Editor).
+> Migration `0003` dan `0004` (enable Realtime) **gak bisa** dijalankan lewat SQL Editor — role default gak punya privilege `ALTER PUBLICATION`. Aktifkan manual lewat **Supabase Dashboard → Database → Replication**, toggle tabel `transactions` dan `categories`.
 
-\`\`\`bash
+```bash
 npm run dev       # development (service worker nonaktif, biar gak ganggu HMR)
 npm run build     # production build (service worker aktif)
 npm run start     # jalankan hasil build
-\`\`\`
+```
 
 ## 🧪 Testing Offline
 
-Service worker **sengaja dimatikan** saat \`next dev\` (bentrok sama hot-reload). Untuk test offline beneran:
+Service worker **sengaja dimatikan** saat `next dev` (bentrok sama hot-reload). Untuk test offline beneran:
 
-\`\`\`bash
+```bash
 npm run build && npm run start
-\`\`\`
+```
 
 Lalu matikan koneksi internet **di browser/device**, bukan cuma toggle "Offline" di DevTools kalau server juga jalan di mesin yang sama (server butuh reach Supabase untuk auth — beda kasus dari PWA offline di production, di mana server ada di cloud dan selalu online).
 
 ## 📁 Struktur Folder
 
-\`\`\`
+```
 app/            # Next.js App Router pages
 components/     # UI components (ui/, transaction/, category/, household/, ...)
 lib/db/         # Dexie schema & query/mutation functions (outbox pattern)
@@ -81,14 +84,14 @@ actions/        # Next.js Server Actions
 types/          # Shared TypeScript types (source of truth data model)
 supabase/migrations/  # SQL schema + RLS policies
 hooks/          # React hooks (household, current user, sync status, dll)
-\`\`\`
+```
 
 ## 🔒 Keamanan
 
 - Row Level Security (RLS) di semua tabel — user cuma bisa akses data household miliknya sendiri
-- Invite-to-household lewat \`SECURITY DEFINER\` RPC function yang divalidasi ketat, bukan expose tabel household mentah
+- Invite-to-household lewat `SECURITY DEFINER` RPC function yang divalidasi ketat, bukan expose tabel household mentah
 - Household dibatasi maksimal 2 anggota
-- \`updated_at\` transaksi di-set server (trigger), bukan client — mencegah manipulasi urutan conflict resolution
+- `updated_at` transaksi di-set server (trigger), bukan client — mencegah manipulasi urutan conflict resolution
 
 ## 📄 Lisensi
 
