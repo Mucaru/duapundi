@@ -21,6 +21,15 @@ async function updateLocalTimestamp(
   }
 }
 
+async function softDeleteOrphanLocal(entity: SyncEntity, id: string): Promise<void> {
+  const now = new Date().toISOString();
+  if (entity === "transaction") {
+    await db.transactions.update(id, { deleted_at: now, updated_at: now });
+  } else if (entity === "category") {
+    await db.categories.update(id, { deleted_at: now, updated_at: now });
+  }
+}
+
 /**
  * Proses satu item queue. Return true kalau sukses (item dihapus dari
  * queue), false kalau gagal (item di-update dgn retry_count++).
@@ -68,7 +77,18 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === "PGRST116") {
+          // Row target gak ada di server sama sekali — data lokal ini
+          // "hantu" (kemungkinan besar row-nya dihapus manual dari
+          // database, di luar app). Retry gak akan pernah berhasil karena
+          // target-nya emang gak ada. Soft-delete lokal biar konsisten
+          // sama realita server, daripada nyantol selamanya.
+          await softDeleteOrphanLocal(item.entity, item.entity_id);
+          return true;
+        }
+        throw error;
+      }
       await updateLocalTimestamp(item.entity, item.entity_id, (data as { updated_at: string }).updated_at);
       return true;
     }
