@@ -1,5 +1,7 @@
 # Self-Critique & PRD v1.1
 
+> **Update v1.2:** item di bawah ini udah dikerjain — (A) update-operation orphan handling, (B) multi-tab leader lock, (C) Sync Log observability, plus fitur baru: **multi-wallet** (privat/shared) dan **visibilitas per-user** (filter + breakdown pengeluaran per orang). Sisa backlog: budget per kategori, export CSV, unit test sync engine, pagination.
+
 Ditulis setelah MVP (fitur di PRD v1.0) selesai dan lolos test manual offline-sync 2 device. Tujuan dokumen ini: jujur soal apa yang masih kurang, biar prioritas pengembangan selanjutnya jelas — bukan cuma nambah fitur baru tapi juga nutup gap yang beresiko ganggu reliability.
 
 ---
