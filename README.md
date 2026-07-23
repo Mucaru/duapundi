@@ -86,6 +86,10 @@ supabase/migrations/  # SQL schema + RLS policies
 hooks/          # React hooks (household, current user, sync status, dll)
 ```
 
+## ⚠️ Aturan Operasional Penting
+
+**Jangan pernah edit atau hapus data (transaksi/kategori) langsung dari Supabase Dashboard/Table Editor.** Sistem sync ini bergantung penuh pada soft-delete tombstone (`deleted_at`) — kalau data dihapus manual dari database, device lain gak akan pernah tau data itu hilang dan bakal nyimpen copy stale selamanya, yang ujungnya bikin sync stuck permanen begitu device itu coba ngedit/hapus data yang sama. Selalu lakukan perubahan data lewat aplikasi.
+
 ## 🔒 Keamanan
 
 - Row Level Security (RLS) di semua tabel — user cuma bisa akses data household miliknya sendiri

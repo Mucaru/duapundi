@@ -4,6 +4,27 @@ Ditulis setelah MVP (fitur di PRD v1.0) selesai dan lolos test manual offline-sy
 
 ---
 
+## 🆕 Post-Mortem v1.1 — Gap yang ketemu dari testing real
+
+Setelah P0 selesai dan dipakai bentar, muncul beberapa gap baru yang gak kepikiran waktu desain awal:
+
+### A. Manual edit langsung ke Supabase Dashboard ngerusak asumsi sync
+Kejadian nyata: transaksi dihapus manual dari Supabase (bukan lewat app) sebelum fitur delete ada. Sistem sync kita 100% bergantung pada **soft-delete tombstone** — hard delete manual bikin device lain gak pernah tau row itu hilang, nyimpen copy stale selamanya. Begitu transaksi itu coba dihapus dari app, sync engine push `UPDATE` ke row yang udah gak ada, gagal terus, stuck permanen tanpa auto-recovery (udah di-fix, lihat bawah).
+
+**Status:** sebagian ke-mitigasi — `processItem` sekarang treat "delete row yang emang udah gak ada" sebagai sukses, dan ada `resetStuckItems()` yang ngasih item stuck kesempatan retry ulang tiap app dibuka. **Tapi** kasus serupa untuk **update** (edit transaksi yang row-nya udah dihapus manual) belum di-handle — masih bakal stuck kalau kejadian.
+
+**Rekomendasi:** (1) dokumentasikan eksplisit "jangan pernah edit/hapus data langsung dari Supabase Dashboard, selalu lewat app" sebagai operational rule, (2) terapkan fix serupa (treat 0-rows-matched sebagai kondisi yang di-handle graceful) untuk operasi `update`, bukan cuma `delete`.
+
+### B. Multi-tab di device yang sama belum dipikirin
+Kalau user buka app di 2 tab browser sekaligus (device sama), masing-masing tab jalanin sync engine sendiri-sendiri — subscribe Realtime channel dobel, dan berpotensi race condition kalau kedua tab bareng-bareng coba proses item `sync_queue` yang sama (keduanya baca item sebelum salah satu sempat hapus dari queue → percobaan insert dobel → conflict di primary key). Belum pernah dites eksplisit, tapi secara desain ini celah nyata.
+
+**Rekomendasi:** minimal, pakai `BroadcastChannel` API atau leader election sederhana biar cuma 1 tab yang jalanin sync engine per browser session.
+
+### C. Auto-retry item stuck bisa nutupin kegagalan yang beneran perlu perhatian
+`resetStuckItems()` yang baru ditambah bagus buat kasus "row udah gak ada di server", tapi kalau ada error lain yang **genuinely perlu campur tangan manual** (misal data corrupt, foreign key rujuk ke row yang beneran gak valid), sistem bakal terus nyoba diam-diam tiap app dibuka tanpa pernah kasih tau user secara eksplisit "ini butuh dicek manual". Trade-off yang sengaja diambil demi UX, tapi perlu diinget.
+
+---
+
 ## 🔴 Gap Kritis — STATUS v1.1
 
 > Update: keempat item P0 di bawah ini udah dikerjakan di v1.1. Bagian asli dipertahankan sebagai catatan kenapa ini prioritas awalnya.
