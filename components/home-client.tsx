@@ -17,6 +17,7 @@ import { SyncStatusBadge } from "@/components/layout/sync-status-badge";
 import { SyncProvider } from "@/components/providers/sync-provider";
 import { InviteSheet } from "@/components/household/invite-sheet";
 import { CategoryManagerSheet } from "@/components/category/category-manager-sheet";
+import { WalletManagerSheet } from "@/components/wallet/wallet-manager-sheet";
 import { PinSettingsSheet } from "@/components/pin/pin-settings-sheet";
 import { PinLockScreen } from "@/components/pin/pin-lock-screen";
 import { usePinLock } from "@/hooks/use-pin-lock";
@@ -29,7 +30,7 @@ interface HomeClientProps {
 }
 
 export function HomeClient({ fallbackName }: HomeClientProps) {
-  const { ready, bootstrapError, household, wallets, categories } = useHousehold();
+  const { ready, bootstrapError, household, wallets, categories, members } = useHousehold();
   const { userId } = useCurrentUser();
   const { locked, unlock, ready: pinReady } = usePinLock();
   const [dateRange, setDateRange] = useState<DateRangeFilter>("this_month");
@@ -79,6 +80,9 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
           <CategoryManagerSheet householdId={household.id} />
+          {userId && (
+            <WalletManagerSheet householdId={household.id} userId={userId} members={members} />
+          )}
           <PinSettingsSheet />
           <InviteSheet />
           <SyncStatusBadge />

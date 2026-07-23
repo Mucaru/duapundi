@@ -25,32 +25,39 @@ export function QuickAddSheet({
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<TransactionType>("expense");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [walletId, setWalletId] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const defaultWallet = wallets[0];
+  // Wallet yang bisa dipilih: shared (owner_user_id null) atau privat
+  // milik user yang sedang login. Wallet privat pasangan gak muncul.
+  const visibleWallets = wallets.filter(
+    (w) => !w.is_archived && (w.owner_user_id === null || w.owner_user_id === userId)
+  );
+  const selectedWallet = visibleWallets.find((w) => w.id === walletId) ?? visibleWallets[0];
   const visibleCategories = categories
     .filter((c) => c.type === type)
     .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0) || a.sort_order - b.sort_order);
 
   function reset() {
     setCategoryId(null);
+    setWalletId(null);
     setAmount("");
     setNote("");
     setShowNote(false);
   }
 
   async function handleSave() {
-    if (!categoryId || !amount || !defaultWallet || saving) return;
+    if (!categoryId || !amount || !selectedWallet || saving) return;
     setSaving(true);
 
     // Optimistic: tulis ke Dexie langsung, gak nunggu apapun. UI (transaction
     // list) baca lewat useLiveQuery jadi otomatis update begitu ini selesai.
     await createTransactionLocal({
       household_id: householdId,
-      wallet_id: defaultWallet.id,
+      wallet_id: selectedWallet.id,
       category_id: categoryId,
       user_id: userId,
       amount: parseInt(amount, 10),
@@ -138,6 +145,26 @@ export function QuickAddSheet({
             </button>
           ))}
         </div>
+
+        {visibleWallets.length > 1 && (
+          <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+            {visibleWallets.map((w) => (
+              <button
+                key={w.id}
+                type="button"
+                onClick={() => setWalletId(w.id)}
+                className={cn(
+                  "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                  selectedWallet?.id === w.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface text-ink-muted"
+                )}
+              >
+                {w.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         <Numpad value={amount} onChange={setAmount} />
 
