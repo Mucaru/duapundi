@@ -1,12 +1,13 @@
 "use client";
 
-import type { Category } from "@/types";
+import type { Category, Wallet } from "@/types";
 import { cn } from "@/lib/utils";
 
 export type DateRangeFilter = "this_month" | "last_month" | "all";
 
 interface TransactionFiltersProps {
   categories: Category[];
+  wallets: Wallet[];
   members: { id: string; name: string }[];
   currentUserId: string | null;
   dateRange: DateRangeFilter;
@@ -15,6 +16,8 @@ interface TransactionFiltersProps {
   onCategoryChange: (value: string | null) => void;
   userFilter: string | null;
   onUserFilterChange: (value: string | null) => void;
+  walletId: string | null;
+  onWalletChange: (value: string | null) => void;
 }
 
 const DATE_RANGE_LABELS: Record<DateRangeFilter, string> = {
@@ -25,6 +28,7 @@ const DATE_RANGE_LABELS: Record<DateRangeFilter, string> = {
 
 export function TransactionFilters({
   categories,
+  wallets,
   members,
   currentUserId,
   dateRange,
@@ -33,6 +37,8 @@ export function TransactionFilters({
   onCategoryChange,
   userFilter,
   onUserFilterChange,
+  walletId,
+  onWalletChange,
 }: TransactionFiltersProps) {
   return (
     <div className="space-y-2 px-6">
@@ -81,6 +87,38 @@ export function TransactionFilters({
               )}
             >
               {m.id === currentUserId ? "Kamu" : m.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {wallets.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => onWalletChange(null)}
+            className={cn(
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+              walletId === null
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-surface text-ink-muted"
+            )}
+          >
+            Semua dompet
+          </button>
+          {wallets.map((w) => (
+            <button
+              key={w.id}
+              type="button"
+              onClick={() => onWalletChange(w.id)}
+              className={cn(
+                "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                walletId === w.id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-surface text-ink-muted"
+              )}
+            >
+              {w.name}
             </button>
           ))}
         </div>

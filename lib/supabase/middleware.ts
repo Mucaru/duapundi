@@ -35,7 +35,18 @@ export async function updateSession(request: NextRequest) {
   // walau nilainya sepertinya tidak dipakai langsung.
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
+
+  // Kalau refresh token-nya invalid (misal: cookie session lama nyangkut
+  // dari testing sebelumnya, atau project Supabase pernah di-reset),
+  // Supabase SDK bakal retry beberapa kali dengan backoff sebelum nyerah
+  // — ini penyebab loading super lambat (puluhan detik) yang kejadian.
+  // Begitu ketauan, langsung clear cookie session-nya supaya request
+  // berikutnya gak ngulang retry pakai token yang sama-sama rusak.
+  if (error?.code === "refresh_token_not_found" || error?.status === 400) {
+    await supabase.auth.signOut();
+  }
 
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
   const isPublicAsset =
@@ -44,13 +55,13 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/icons") ||
     request.nextUrl.pathname.startsWith("/sw.js");
 
-  if (!user && !isAuthRoute && !isPublicAsset) {
+  if ((!user || error) && !isAuthRoute && !isPublicAsset) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
+  if (user && !error && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

@@ -36,6 +36,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
   const [dateRange, setDateRange] = useState<DateRangeFilter>("this_month");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [userFilter, setUserFilter] = useState<string | null>(null);
+  const [walletFilter, setWalletFilter] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   if (!pinReady) {
@@ -111,6 +112,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
       <div className="mt-6 space-y-4">
         <TransactionFilters
           categories={categories}
+          wallets={wallets.filter((w) => !w.is_archived)}
           members={members}
           currentUserId={userId}
           dateRange={dateRange}
@@ -119,16 +121,20 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
           onCategoryChange={setCategoryFilter}
           userFilter={userFilter}
           onUserFilterChange={setUserFilter}
+          walletId={walletFilter}
+          onWalletChange={setWalletFilter}
         />
         <TransactionList
           householdId={household.id}
           categories={categories}
+          wallets={wallets}
           members={members}
           currentUserId={userId}
           dateFrom={dateRangeToBounds(dateRange).from}
           dateTo={dateRangeToBounds(dateRange).to}
           categoryId={categoryFilter}
           userFilter={userFilter}
+          walletId={walletFilter}
           onSelectTransaction={setSelectedTransaction}
         />
       </div>

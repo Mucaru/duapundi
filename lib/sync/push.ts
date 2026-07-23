@@ -93,9 +93,25 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
           // Row target gak ada di server sama sekali — data lokal ini
           // "hantu" (kemungkinan besar row-nya dihapus manual dari
           // database, di luar app). Retry gak akan pernah berhasil karena
-          // target-nya emang gak ada. Soft-delete lokal biar konsisten
-          // sama realita server, daripada nyantol selamanya.
+          // target-nya emang gak ada. Coba insert ulang sebagai tombstone
+          // (soft-deleted) dari data lokal yang masih kita punya, biar
+          // device lain juga ikut tau row ini harus dianggap terhapus —
+          // bukan cuma soft-delete lokal doang yang gak ke-propagate.
           await softDeleteOrphanLocal(item.entity, item.entity_id);
+          const orphanNow = new Date().toISOString();
+          const tombstonePayload: Record<string, unknown> = {
+            ...item.payload,
+            deleted_at: orphanNow,
+          };
+          delete tombstonePayload.updated_at;
+          const { error: insertError } = await supabase.from(table).insert(tombstonePayload);
+          if (insertError && process.env.NODE_ENV !== "production") {
+            // eslint-disable-next-line no-console
+            console.warn(
+              "[sync] gak bisa bikin tombstone buat row hantu (update):",
+              insertError.message
+            );
+          }
           return true;
         }
         throw error;
@@ -118,11 +134,38 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
         .single();
 
       if (error) {
-        // PGRST116 = 0 baris ke-match. Untuk operasi DELETE, ini berarti
-        // row-nya emang udah gak ada di server (misal: pernah dihapus manual
-        // langsung dari database, di luar app). Tujuan delete (row absent
-        // di server) udah tercapai — anggap sukses, jangan retry selamanya.
-        if (error.code === "PGRST116") return true;
+        if (error.code === "PGRST116") {
+          // Row target gak ada di server SAMA SEKALI (bukan cuma belum
+          // di-update ke deleted_at) — kemungkinan besar kena hard-delete
+          // manual sebelum tombstone sempat kebentuk. Kalau kita cuma
+          // "return true" di sini tanpa nulis apapun ke server, device
+          // LAIN yang masih nyimpen copy row ini gak akan PERNAH tau row
+          // itu harus dihapus — gak ada apapun yang berubah buat mereka
+          // reconcile. Jadi INSERT ulang row ini sebagai tombstone
+          // (deleted_at udah keisi dari awal) memakai payload penuh yang
+          // sekarang selalu dikirim — biar propagate ke device lain.
+          const insertPayload = { ...item.payload };
+          delete insertPayload.updated_at; // biar trigger server yang isi
+
+          const { error: insertError } = await supabase
+            .from(table)
+            .insert(insertPayload);
+
+          if (insertError) {
+            // Insert tombstone juga gagal (misal FK ke wallet/kategori yang
+            // udah gak ada juga) — gak ada cara lain, terima inkonsistensi
+            // lokal-only sebagai limitasi yang diketahui, tapi jangan retry
+            // selamanya karena percobaan berikutnya juga bakal gagal sama.
+            if (process.env.NODE_ENV !== "production") {
+              // eslint-disable-next-line no-console
+              console.warn(
+                "[sync] gak bisa bikin tombstone buat row yang udah hilang total dari server:",
+                insertError.message
+              );
+            }
+          }
+          return true;
+        }
         throw error;
       }
       await updateLocalTimestamp(item.entity, item.entity_id, (data as { updated_at: string }).updated_at);

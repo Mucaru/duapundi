@@ -3,17 +3,19 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db/schema";
 import { formatIDR } from "@/lib/utils";
-import type { Category, Transaction } from "@/types";
+import type { Category, Transaction, Wallet } from "@/types";
 
 interface TransactionListProps {
   householdId: string;
   categories: Category[];
+  wallets: Wallet[];
   members: { id: string; name: string }[];
   currentUserId: string | null;
   dateFrom?: string | null;
   dateTo?: string | null;
   categoryId?: string | null;
   userFilter?: string | null;
+  walletId?: string | null;
   onSelectTransaction?: (transaction: Transaction) => void;
 }
 
@@ -33,12 +35,14 @@ function formatDateLabel(dateStr: string): string {
 export function TransactionList({
   householdId,
   categories,
+  wallets,
   members,
   currentUserId,
   dateFrom,
   dateTo,
   categoryId,
   userFilter,
+  walletId,
   onSelectTransaction,
 }: TransactionListProps) {
   const pendingIds = useLiveQuery(async () => {
@@ -57,11 +61,12 @@ export function TransactionList({
           if (dateTo && t.date > dateTo) return false;
           if (categoryId && t.category_id !== categoryId) return false;
           if (userFilter && t.user_id !== userFilter) return false;
+          if (walletId && t.wallet_id !== walletId) return false;
           return true;
         })
         .reverse()
         .sortBy("date"),
-    [householdId, dateFrom, dateTo, categoryId, userFilter]
+    [householdId, dateFrom, dateTo, categoryId, userFilter, walletId]
   );
 
   function memberLabel(userId: string): string {
@@ -74,7 +79,7 @@ export function TransactionList({
   }
 
   if (transactions.length === 0) {
-    const isFiltered = Boolean(dateFrom || dateTo || categoryId || userFilter);
+    const isFiltered = Boolean(dateFrom || dateTo || categoryId || userFilter || walletId);
     return (
       <div className="px-6 py-16 text-center">
         <p className="text-sm text-ink-muted">
@@ -133,6 +138,11 @@ export function TransactionList({
                       {members.length > 1 && (
                         <span className="shrink-0 rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
                           {memberLabel(tx.user_id)}
+                        </span>
+                      )}
+                      {wallets.length > 1 && (
+                        <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          {wallets.find((w) => w.id === tx.wallet_id)?.name ?? "?"}
                         </span>
                       )}
                     </div>

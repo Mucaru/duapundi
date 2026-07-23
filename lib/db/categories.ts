@@ -89,7 +89,7 @@ export async function deleteCategoryLocal(id: string): Promise<void> {
       entity: "category",
       entity_id: id,
       operation: "delete",
-      payload: { id, deleted_at: now },
+      payload: updated as unknown as Record<string, unknown>,
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
