@@ -35,6 +35,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
   const { locked, unlock, ready: pinReady } = usePinLock();
   const [dateRange, setDateRange] = useState<DateRangeFilter>("this_month");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [userFilter, setUserFilter] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   if (!pinReady) {
@@ -100,22 +101,34 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
         </div>
       </div>
 
-      <BalanceCard householdId={household.id} greetingName={fallbackName} />
+      <BalanceCard
+        householdId={household.id}
+        greetingName={fallbackName}
+        members={members}
+        currentUserId={userId}
+      />
 
       <div className="mt-6 space-y-4">
         <TransactionFilters
           categories={categories}
+          members={members}
+          currentUserId={userId}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
           categoryId={categoryFilter}
           onCategoryChange={setCategoryFilter}
+          userFilter={userFilter}
+          onUserFilterChange={setUserFilter}
         />
         <TransactionList
           householdId={household.id}
           categories={categories}
+          members={members}
+          currentUserId={userId}
           dateFrom={dateRangeToBounds(dateRange).from}
           dateTo={dateRangeToBounds(dateRange).to}
           categoryId={categoryFilter}
+          userFilter={userFilter}
           onSelectTransaction={setSelectedTransaction}
         />
       </div>

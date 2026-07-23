@@ -8,9 +8,12 @@ import type { Category, Transaction } from "@/types";
 interface TransactionListProps {
   householdId: string;
   categories: Category[];
+  members: { id: string; name: string }[];
+  currentUserId: string | null;
   dateFrom?: string | null;
   dateTo?: string | null;
   categoryId?: string | null;
+  userFilter?: string | null;
   onSelectTransaction?: (transaction: Transaction) => void;
 }
 
@@ -30,9 +33,12 @@ function formatDateLabel(dateStr: string): string {
 export function TransactionList({
   householdId,
   categories,
+  members,
+  currentUserId,
   dateFrom,
   dateTo,
   categoryId,
+  userFilter,
   onSelectTransaction,
 }: TransactionListProps) {
   const pendingIds = useLiveQuery(async () => {
@@ -50,19 +56,25 @@ export function TransactionList({
           if (dateFrom && t.date < dateFrom) return false;
           if (dateTo && t.date > dateTo) return false;
           if (categoryId && t.category_id !== categoryId) return false;
+          if (userFilter && t.user_id !== userFilter) return false;
           return true;
         })
         .reverse()
         .sortBy("date"),
-    [householdId, dateFrom, dateTo, categoryId]
+    [householdId, dateFrom, dateTo, categoryId, userFilter]
   );
+
+  function memberLabel(userId: string): string {
+    if (userId === currentUserId) return "Kamu";
+    return members.find((m) => m.id === userId)?.name ?? "?";
+  }
 
   if (!transactions) {
     return <p className="px-6 text-sm text-ink-muted">Memuat...</p>;
   }
 
   if (transactions.length === 0) {
-    const isFiltered = Boolean(dateFrom || dateTo || categoryId);
+    const isFiltered = Boolean(dateFrom || dateTo || categoryId || userFilter);
     return (
       <div className="px-6 py-16 text-center">
         <p className="text-sm text-ink-muted">
@@ -114,9 +126,16 @@ export function TransactionList({
                     <p className="truncate text-sm font-medium text-ink">
                       {category?.name ?? "Tanpa kategori"}
                     </p>
-                    {tx.note && (
-                      <p className="truncate text-xs text-ink-muted">{tx.note}</p>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {tx.note && (
+                        <p className="truncate text-xs text-ink-muted">{tx.note}</p>
+                      )}
+                      {members.length > 1 && (
+                        <span className="shrink-0 rounded-full bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
+                          {memberLabel(tx.user_id)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     <p

@@ -7,6 +7,8 @@ import { formatIDR } from "@/lib/utils";
 interface BalanceCardProps {
   householdId: string;
   greetingName: string;
+  members: { id: string; name: string }[];
+  currentUserId: string | null;
 }
 
 function startOfMonth(): string {
@@ -14,7 +16,12 @@ function startOfMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
-export function BalanceCard({ householdId, greetingName }: BalanceCardProps) {
+export function BalanceCard({
+  householdId,
+  greetingName,
+  members,
+  currentUserId,
+}: BalanceCardProps) {
   const monthTx = useLiveQuery(
     () =>
       db.transactions
@@ -32,6 +39,15 @@ export function BalanceCard({ householdId, greetingName }: BalanceCardProps) {
     .filter((t) => t.type === "expense")
     .reduce((sum, t) => sum + t.amount, 0);
   const balance = income - expense;
+
+  // Breakdown pengeluaran per member — cuma relevan kalau household
+  // beranggotakan lebih dari 1 orang.
+  const expenseByUser = members.map((m) => ({
+    ...m,
+    total: (monthTx ?? [])
+      .filter((t) => t.type === "expense" && t.user_id === m.id)
+      .reduce((sum, t) => sum + t.amount, 0),
+  }));
 
   // Streak sederhana: jumlah hari unik dengan transaksi dalam 30 hari terakhir,
   // berurutan mundur dari hari ini. Sentuhan personal — bukan metrik serius.
@@ -72,6 +88,20 @@ export function BalanceCard({ householdId, greetingName }: BalanceCardProps) {
         <p className="mt-4 text-xs text-primary-foreground/80">
           🌱 Kalian udah nyatet {streakDays} hari berturut-turut
         </p>
+      )}
+
+      {members.length > 1 && expense > 0 && (
+        <div className="mt-4 space-y-1.5 border-t border-white/10 pt-4">
+          <p className="text-xs text-primary-foreground/70">Pengeluaran per orang</p>
+          {expenseByUser.map((m) => (
+            <div key={m.id} className="flex items-center justify-between text-xs">
+              <span className="text-primary-foreground/90">
+                {m.id === currentUserId ? "Kamu" : m.name}
+              </span>
+              <span className="font-semibold tabular-nums">{formatIDR(m.total)}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
