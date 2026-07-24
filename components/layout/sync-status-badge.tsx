@@ -9,7 +9,7 @@ import { MAX_RETRY } from "@/lib/sync/push";
 import { cn } from "@/lib/utils";
 import { SyncLogSheet } from "./sync-log-sheet";
 
-export function SyncStatusBadge() {
+export function SyncStatusBadge({ householdId }: { householdId: string }) {
   const [open, setOpen] = useState(false);
   const isOnline = useOnlineStatus();
   const isSyncing = useIsSyncing();
@@ -44,7 +44,7 @@ export function SyncStatusBadge() {
         <span className={cn("h-1.5 w-1.5 rounded-full", dotClass)} />
         {label}
       </button>
-      <SyncLogSheet open={open} onOpenChange={setOpen} />
+      <SyncLogSheet open={open} onOpenChange={setOpen} householdId={householdId} />
     </>
   );
 }

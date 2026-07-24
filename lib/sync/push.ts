@@ -70,7 +70,31 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === "23505") {
+          // Unique violation di primary key (id) — berarti insert kita
+          // SEBELUMNYA sebenernya udah sukses di server, cuma response-nya
+          // gak sempat nyampe ke client (koneksi kepotong tepat setelah
+          // server proses, sebelum balesannya diterima). Retry kedua ini
+          // nyoba insert id yang sama, wajar ketabrak constraint. Row-nya
+          // UDAH ada di server dengan benar — jangan retry selamanya,
+          // cukup selaraskan updated_at lokal dari row yang udah ada itu.
+          const { data: existing } = await supabase
+            .from(table)
+            .select("updated_at")
+            .eq("id", item.entity_id)
+            .single();
+          if (existing) {
+            await updateLocalTimestamp(
+              item.entity,
+              item.entity_id,
+              (existing as { updated_at: string }).updated_at
+            );
+          }
+          return true;
+        }
+        throw error;
+      }
       await updateLocalTimestamp(item.entity, item.entity_id, (data as { updated_at: string }).updated_at);
       return true;
     }
@@ -186,6 +210,7 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
     await db.sync_queue.update(item.id!, {
       retry_count: item.retry_count + 1,
       last_error: message.slice(0, 200),
+      last_attempted_at: new Date().toISOString(),
     });
     return false;
   }
@@ -202,7 +227,11 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
 export async function resetStuckItems(): Promise<number> {
   const stuck = await db.sync_queue.where("retry_count").aboveOrEqual(MAX_RETRY).toArray();
   for (const item of stuck) {
-    await db.sync_queue.update(item.id!, { retry_count: 0, last_error: null });
+    await db.sync_queue.update(item.id!, {
+      retry_count: 0,
+      last_error: null,
+      last_attempted_at: null,
+    });
   }
   return stuck.length;
 }
@@ -225,8 +254,14 @@ export async function flushQueue(): Promise<{ processed: number; failed: number 
       continue;
     }
     // Backoff: skip item yang baru gagal dan belum waktunya dicoba lagi.
-    if (item.retry_count > 0) {
-      const elapsed = Date.now() - new Date(item.created_at).getTime();
+    // Dihitung dari percobaan TERAKHIR (last_attempted_at), bukan dari
+    // waktu item pertama kali di-queue (created_at) — kalau pakai
+    // created_at, elapsed time terus membesar seiring waktu sementara
+    // backoffMs di-cap 2 menit, jadi begitu item udah nangkring >2 menit
+    // backoff-nya efektif gak berlaku lagi (retry tiap poll cycle,
+    // ngalahin tujuan backoff itu sendiri).
+    if (item.retry_count > 0 && item.last_attempted_at) {
+      const elapsed = Date.now() - new Date(item.last_attempted_at).getTime();
       if (elapsed < backoffMs(item.retry_count)) {
         continue;
       }

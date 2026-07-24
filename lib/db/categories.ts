@@ -42,6 +42,7 @@ export async function createCategoryLocal(
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
+      last_attempted_at: null,
       created_at: now,
     });
   });
@@ -71,6 +72,7 @@ export async function toggleCategoryFavoriteLocal(id: string): Promise<void> {
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
+      last_attempted_at: null,
       created_at: now,
     });
   });
@@ -93,6 +95,7 @@ export async function deleteCategoryLocal(id: string): Promise<void> {
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
+      last_attempted_at: null,
       created_at: now,
     });
   });

@@ -1,16 +1,19 @@
 "use client";
 
 import { useLiveQuery } from "dexie-react-hooks";
-import { AlertTriangle, RotateCw } from "lucide-react";
+import { AlertTriangle, RotateCw, ShieldCheck, ShieldAlert } from "lucide-react";
 import { db } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MAX_RETRY, resetStuckItems } from "@/lib/sync/push";
+import { reconcileAll } from "@/lib/sync/pull";
+import { runIntegrityCheck, type IntegrityReport } from "@/lib/sync/integrity-check";
 import { useState } from "react";
 
 interface SyncLogSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  householdId: string;
 }
 
 const ENTITY_LABEL: Record<string, string> = {
@@ -27,8 +30,10 @@ const OPERATION_LABEL: Record<string, string> = {
   delete: "Hapus",
 };
 
-export function SyncLogSheet({ open, onOpenChange }: SyncLogSheetProps) {
+export function SyncLogSheet({ open, onOpenChange, householdId }: SyncLogSheetProps) {
   const [retrying, setRetrying] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [report, setReport] = useState<IntegrityReport[] | null>(null);
   const items = useLiveQuery(
     () => db.sync_queue.orderBy("client_timestamp").reverse().toArray(),
     []
@@ -38,6 +43,20 @@ export function SyncLogSheet({ open, onOpenChange }: SyncLogSheetProps) {
     setRetrying(true);
     await resetStuckItems();
     setRetrying(false);
+  }
+
+  async function handleIntegrityCheck() {
+    setChecking(true);
+    setReport(null);
+    try {
+      // Reconcile dulu biar hasil cek gak ke-false-positive gara-gara
+      // sekadar belum sempat pull perubahan terbaru.
+      await reconcileAll(householdId);
+      const result = await runIntegrityCheck(householdId);
+      setReport(result);
+    } finally {
+      setChecking(false);
+    }
   }
 
   return (
@@ -108,6 +127,55 @@ export function SyncLogSheet({ open, onOpenChange }: SyncLogSheetProps) {
           Kalau terus gagal setelah beberapa kali app dibuka, kemungkinan ada
           masalah data yang butuh dicek manual.
         </p>
+
+        <div className="mt-6 border-t border-border pt-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              Cek integritas data
+            </p>
+            <Button variant="outline" size="sm" onClick={handleIntegrityCheck} disabled={checking}>
+              {checking ? "Mengecek..." : "Cek sekarang"}
+            </Button>
+          </div>
+
+          {report && (
+            <div className="mt-3 space-y-2">
+              {report.map((r) => (
+                <div
+                  key={r.entity}
+                  className="flex items-start gap-2 rounded-2xl bg-surface-muted p-3"
+                >
+                  {r.match ? (
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-income" />
+                  ) : (
+                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-ink">
+                      {ENTITY_LABEL[r.entity]}: {r.localCount} lokal, {r.serverCount} server
+                    </p>
+                    {r.localOnlySuspicious.length > 0 && (
+                      <p className="mt-0.5 text-xs text-danger">
+                        {r.localOnlySuspicious.length} data cuma ada lokal, gak jelas kenapa
+                        (bukan sekadar nunggu antrian) — coba hapus &amp; buat ulang lewat app
+                        kalau ini beneran salah satu yang bermasalah.
+                      </p>
+                    )}
+                    {r.serverOnlyIds.length > 0 && (
+                      <p className="mt-0.5 text-xs text-accent-warm">
+                        {r.serverOnlyIds.length} data ada di server tapi belum masuk sini —
+                        udah otomatis ditarik barusan, coba cek ulang riwayat.
+                      </p>
+                    )}
+                    {r.match && (
+                      <p className="mt-0.5 text-xs text-ink-muted">Data lokal &amp; server selaras.</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );

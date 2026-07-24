@@ -121,7 +121,8 @@ export function subscribeRealtime(householdId: string): () => void {
  */
 export async function reconcileAll(householdId: string): Promise<void> {
   const supabase = createClient();
-  const lastSync = localStorage.getItem(`last_reconcile:${householdId}`);
+  const storageKey = `last_reconcile:${householdId}`;
+  const lastSync = localStorage.getItem(storageKey);
 
   let txQuery = supabase.from("transactions").select("*").eq("household_id", householdId);
   let catQuery = supabase.from("categories").select("*").eq("household_id", householdId);
@@ -139,21 +140,43 @@ export async function reconcileAll(householdId: string): Promise<void> {
     walletQuery,
   ]);
 
+  // Kalau ADA SATU AJA query yang gagal (misal network kepotong di
+  // tengah), JANGAN majuin checkpoint. Kalau tetap dimajuin, perubahan
+  // yang kelewat di window ini hilang permanen — reconcile berikutnya
+  // cuma nyari yang lebih baru dari checkpoint, jadi window yang gagal
+  // tadi gak akan pernah di-retry. Lebih aman reconcile ulang window
+  // yang sama (idempotent, gak masalah proses dobel) daripada diam-diam
+  // kehilangan data.
+  const hadError = Boolean(txResult.error || catResult.error || walletResult.error);
+
+  // Checkpoint baru = updated_at TERBESAR dari data yang beneran
+  // ke-fetch (server-authoritative), BUKAN jam device (new Date()).
+  // Kalau jam device kamu meleset dikit aja ke depan, pakai jam device
+  // sebagai checkpoint bisa bikin reconcile berikutnya nyari "lebih
+  // baru dari masa depan" — otomatis miss perubahan asli yang
+  // timestamp server-nya di belakang jam device yang salah itu.
+  let maxUpdatedAt = lastSync;
+
   if (txResult.data) {
     for (const row of txResult.data as Transaction[]) {
       await mergeRemoteTransaction(row);
+      if (!maxUpdatedAt || row.updated_at > maxUpdatedAt) maxUpdatedAt = row.updated_at;
     }
   }
   if (catResult.data) {
     for (const row of catResult.data as Category[]) {
       await mergeRemoteCategory(row);
+      if (!maxUpdatedAt || row.updated_at > maxUpdatedAt) maxUpdatedAt = row.updated_at;
     }
   }
   if (walletResult.data) {
     for (const row of walletResult.data as Wallet[]) {
       await mergeRemoteWallet(row);
+      if (!maxUpdatedAt || row.updated_at > maxUpdatedAt) maxUpdatedAt = row.updated_at;
     }
   }
 
-  localStorage.setItem(`last_reconcile:${householdId}`, new Date().toISOString());
+  if (!hadError && maxUpdatedAt) {
+    localStorage.setItem(storageKey, maxUpdatedAt);
+  }
 }

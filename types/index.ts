@@ -104,5 +104,6 @@ export interface SyncQueueItem {
   client_timestamp: string; // urutan lokal
   retry_count: number;
   last_error: string | null;
+  last_attempted_at: string | null; // buat hitung exponential backoff yang bener
   created_at: string;
 }

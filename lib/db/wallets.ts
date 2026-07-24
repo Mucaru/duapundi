@@ -33,6 +33,7 @@ export async function createWalletLocal(input: CreateWalletInput): Promise<Walle
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
+      last_attempted_at: null,
       created_at: now,
     });
   });
@@ -57,6 +58,7 @@ export async function archiveWalletLocal(id: string): Promise<void> {
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
+      last_attempted_at: null,
       created_at: now,
     });
   });

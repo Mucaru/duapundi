@@ -61,6 +61,7 @@ export async function createTransactionLocal(
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
+      last_attempted_at: null,
       created_at: now,
     });
   });
@@ -100,6 +101,7 @@ export async function updateTransactionLocal(
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
+      last_attempted_at: null,
       created_at: now,
     });
   });
@@ -132,6 +134,7 @@ export async function deleteTransactionLocal(
       client_timestamp: now,
       retry_count: 0,
       last_error: null,
+      last_attempted_at: null,
       created_at: now,
     });
   });

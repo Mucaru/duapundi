@@ -87,7 +87,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
           )}
           <PinSettingsSheet />
           <InviteSheet />
-          <SyncStatusBadge />
+          <SyncStatusBadge householdId={household.id} />
           <form action={signOut}>
             <Button
               variant="ghost"
