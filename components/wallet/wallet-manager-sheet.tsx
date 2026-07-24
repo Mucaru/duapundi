@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Wallet as WalletIcon, Archive, Users } from "lucide-react";
 import { db } from "@/lib/db/schema";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,17 @@ interface WalletManagerSheetProps {
   householdId: string;
   userId: string;
   members: { id: string; name: string }[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function WalletManagerSheet({ householdId, userId, members }: WalletManagerSheetProps) {
-  const [open, setOpen] = useState(false);
+export function WalletManagerSheet({
+  householdId,
+  userId,
+  members,
+  open,
+  onOpenChange,
+}: WalletManagerSheetProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<WalletType>("cash");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -63,12 +70,7 @@ export function WalletManagerSheet({ householdId, userId, members }: WalletManag
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Kelola dompet">
-          <WalletIcon className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetTitle className="font-display text-xl font-semibold text-ink">
           Kelola dompet

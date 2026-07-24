@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock } from "lucide-react";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { PinPad } from "./pin-pad";
@@ -10,8 +9,12 @@ import { hasPinSet, setPin, verifyPin, removePin } from "@/lib/pin";
 
 type Step = "idle" | "verify_old" | "enter_new" | "confirm_new";
 
-export function PinSettingsSheet() {
-  const [open, setOpen] = useState(false);
+interface PinSettingsSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function PinSettingsSheet({ open, onOpenChange }: PinSettingsSheetProps) {
   const [pinExists, setPinExists] = useState(false);
   const [step, setStep] = useState<Step>("idle");
   const [firstEntry, setFirstEntry] = useState("");
@@ -19,9 +22,13 @@ export function PinSettingsSheet() {
   const [padKey, setPadKey] = useState(0);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
-  function handleOpen(next: boolean) {
-    setOpen(next);
-    if (next) {
+  // Reset state pas sheet dibuka — pakai pola "derived state saat render"
+  // (bandingin sama nilai open sebelumnya), BUKAN useEffect+setState, biar
+  // gak ada cascading render ekstra.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
       setPinExists(hasPinSet());
       setStep("idle");
       setError(null);
@@ -69,12 +76,7 @@ export function PinSettingsSheet() {
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Kunci PIN">
-          <Lock className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetTitle className="font-display text-xl font-semibold text-ink">
           Kunci PIN

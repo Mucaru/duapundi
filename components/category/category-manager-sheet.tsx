@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Star, Trash2, Tags } from "lucide-react";
+import { Star, Trash2 } from "lucide-react";
 import { db } from "@/lib/db/schema";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,10 +29,15 @@ const PALETTE = [
 
 interface CategoryManagerSheetProps {
   householdId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function CategoryManagerSheet({ householdId }: CategoryManagerSheetProps) {
-  const [open, setOpen] = useState(false);
+export function CategoryManagerSheet({
+  householdId,
+  open,
+  onOpenChange,
+}: CategoryManagerSheetProps) {
   const [type, setType] = useState<TransactionType>("expense");
   const [name, setName] = useState("");
   const [color, setColor] = useState(PALETTE[0]);
@@ -62,12 +67,7 @@ export function CategoryManagerSheet({ householdId }: CategoryManagerSheetProps)
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Kelola kategori">
-          <Tags className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetTitle className="font-display text-xl font-semibold text-ink">
           Kelola kategori

@@ -9,21 +9,15 @@ import { TransactionList } from "@/components/transaction/transaction-list";
 import { TransactionDetailSheet } from "@/components/transaction/transaction-detail-sheet";
 import type { Transaction } from "@/types";
 import {
-  TransactionFilters,
   dateRangeToBounds,
   type DateRangeFilter,
 } from "@/components/transaction/transaction-filters";
+import { TransactionFilterSheet } from "@/components/transaction/transaction-filter-sheet";
 import { SyncStatusBadge } from "@/components/layout/sync-status-badge";
 import { SyncProvider } from "@/components/providers/sync-provider";
-import { InviteSheet } from "@/components/household/invite-sheet";
-import { CategoryManagerSheet } from "@/components/category/category-manager-sheet";
-import { WalletManagerSheet } from "@/components/wallet/wallet-manager-sheet";
-import { PinSettingsSheet } from "@/components/pin/pin-settings-sheet";
+import { SettingsMenu } from "@/components/layout/settings-menu";
 import { PinLockScreen } from "@/components/pin/pin-lock-screen";
 import { usePinLock } from "@/hooks/use-pin-lock";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
-import { signOut } from "@/actions/auth";
 
 interface HomeClientProps {
   fallbackName: string;
@@ -81,24 +75,10 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
           {household.name}
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
-          <CategoryManagerSheet householdId={household.id} />
           {userId && (
-            <WalletManagerSheet householdId={household.id} userId={userId} members={members} />
+            <SettingsMenu householdId={household.id} userId={userId} members={members} />
           )}
-          <PinSettingsSheet />
-          <InviteSheet />
           <SyncStatusBadge householdId={household.id} />
-          <form action={signOut}>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="bg-surface-muted"
-              type="submit"
-              aria-label="Keluar akun"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </form>
         </div>
       </div>
 
@@ -110,7 +90,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
       />
 
       <div className="mt-6 space-y-4">
-        <TransactionFilters
+        <TransactionFilterSheet
           categories={categories}
           wallets={wallets.filter((w) => !w.is_archived)}
           members={members}

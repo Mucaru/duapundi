@@ -32,7 +32,11 @@ export function useHousehold() {
   const categories = useLiveQuery(
     () =>
       household
-        ? db.categories.where("household_id").equals(household.id).toArray()
+        ? db.categories
+            .where("household_id")
+            .equals(household.id)
+            .filter((c) => c.deleted_at === null)
+            .toArray()
         : [],
     [household?.id]
   );

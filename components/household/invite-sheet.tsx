@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Copy, Check, Users, LogOut } from "lucide-react";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useEffect, useState, useTransition } from "react";
+import { Copy, Check, LogOut } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { getHouseholdInviteInfo, leaveHouseholdAction } from "@/actions/household";
@@ -12,23 +12,27 @@ interface InviteInfo {
   members: { id: string; name: string }[];
 }
 
-export function InviteSheet() {
-  const [open, setOpen] = useState(false);
+interface InviteSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function InviteSheet({ open, onOpenChange }: InviteSheetProps) {
   const [info, setInfo] = useState<InviteInfo | null>(null);
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [isLeaving, startLeaving] = useTransition();
 
-  function handleOpen(next: boolean) {
-    setOpen(next);
-    if (next && !info) {
+  useEffect(() => {
+    if (open && !info) {
       startTransition(async () => {
         const result = await getHouseholdInviteInfo();
         setInfo(result);
       });
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   async function handleCopy() {
     if (!info?.household) return;
@@ -44,12 +48,7 @@ export function InviteSheet() {
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Undang pasangan">
-          <Users className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetTitle className="font-display text-xl font-semibold text-ink">
           Undang pacar kamu

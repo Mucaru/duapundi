@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db/schema";
 import { formatIDR } from "@/lib/utils";
 import type { Category, Transaction, Wallet } from "@/types";
+
+const PAGE_SIZE = 30;
 
 interface TransactionListProps {
   householdId: string;
@@ -74,6 +77,19 @@ export function TransactionList({
     return members.find((m) => m.id === userId)?.name ?? "?";
   }
 
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Reset pagination tiap kali filter berubah — angka "30 pertama" dari
+  // hasil filter lama gak relevan lagi buat hasil filter yang baru. Pola
+  // "derived state saat render" (bandingin key filter sebelumnya), bukan
+  // useEffect+setState, biar gak ada cascading render ekstra.
+  const filterKey = `${householdId}|${dateFrom}|${dateTo}|${categoryId}|${userFilter}|${walletId}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setVisibleCount(PAGE_SIZE);
+  }
+
   if (!transactions) {
     return <p className="px-6 text-sm text-ink-muted">Memuat...</p>;
   }
@@ -91,8 +107,12 @@ export function TransactionList({
     );
   }
 
-  // Group by date
-  const groups = transactions.reduce<Record<string, typeof transactions>>(
+  // Group by date — cuma dari transaksi yang lagi "ditampilkan"
+  // (dibatasi pagination), bukan seluruh hasil filter.
+  const visibleTransactions = transactions.slice(0, visibleCount);
+  const hasMore = transactions.length > visibleCount;
+
+  const groups = visibleTransactions.reduce<Record<string, typeof transactions>>(
     (acc, tx) => {
       (acc[tx.date] ??= []).push(tx);
       return acc;
@@ -166,6 +186,16 @@ export function TransactionList({
           </div>
         </div>
       ))}
+
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+          className="w-full rounded-2xl border border-border bg-surface py-3 text-sm font-medium text-ink-muted"
+        >
+          Muat {Math.min(PAGE_SIZE, transactions.length - visibleCount)} transaksi lagi
+        </button>
+      )}
     </div>
   );
 }

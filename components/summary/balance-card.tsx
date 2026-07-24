@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { ChevronDown } from "lucide-react";
 import { db } from "@/lib/db/schema";
-import { formatIDR } from "@/lib/utils";
+import { formatIDR, cn } from "@/lib/utils";
 
 interface BalanceCardProps {
   householdId: string;
@@ -22,6 +24,7 @@ export function BalanceCard({
   members,
   currentUserId,
 }: BalanceCardProps) {
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const monthTx = useLiveQuery(
     () =>
       db.transactions
@@ -91,16 +94,29 @@ export function BalanceCard({
       )}
 
       {members.length > 1 && expense > 0 && (
-        <div className="mt-4 space-y-1.5 border-t border-white/10 pt-4">
-          <p className="text-xs text-primary-foreground/70">Pengeluaran per orang</p>
-          {expenseByUser.map((m) => (
-            <div key={m.id} className="flex items-center justify-between text-xs">
-              <span className="text-primary-foreground/90">
-                {m.id === currentUserId ? "Kamu" : m.name}
-              </span>
-              <span className="font-semibold tabular-nums">{formatIDR(m.total)}</span>
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowBreakdown((v) => !v)}
+            className="flex w-full items-center justify-between text-xs text-primary-foreground/70"
+          >
+            Pengeluaran per orang
+            <ChevronDown
+              className={cn("h-3.5 w-3.5 transition-transform", showBreakdown && "rotate-180")}
+            />
+          </button>
+          {showBreakdown && (
+            <div className="mt-2 space-y-1.5">
+              {expenseByUser.map((m) => (
+                <div key={m.id} className="flex items-center justify-between text-xs">
+                  <span className="text-primary-foreground/90">
+                    {m.id === currentUserId ? "Kamu" : m.name}
+                  </span>
+                  <span className="font-semibold tabular-nums">{formatIDR(m.total)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

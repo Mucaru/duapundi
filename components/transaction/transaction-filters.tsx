@@ -41,7 +41,7 @@ export function TransactionFilters({
   onWalletChange,
 }: TransactionFiltersProps) {
   return (
-    <div className="space-y-2 px-6">
+    <div className="space-y-3">
       <div className="flex gap-2 overflow-x-auto pb-1">
         {(Object.keys(DATE_RANGE_LABELS) as DateRangeFilter[]).map((key) => (
           <button
