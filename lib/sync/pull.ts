@@ -1,14 +1,14 @@
 import { db } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/client";
-import type { Transaction, Category, Wallet } from "@/types";
+import type { Transaction, Category, Wallet, Budget } from "@/types";
 
 /**
- * Merge satu row (transaksi/kategori/wallet) yang datang dari server (baik
- * lewat Realtime event maupun reconcile fetch) ke Dexie. Ini jantung dari
- * conflict resolution: row remote MENANG kalau updated_at server-nya lebih
- * baru dari yang kita punya lokal — penuh (whole row), bukan field-level
- * merge. Lihat catatan arsitektur: field-level merge berisiko untuk data
- * keuangan.
+ * Merge satu row (transaksi/kategori/wallet/budget) yang datang dari
+ * server (baik lewat Realtime event maupun reconcile fetch) ke Dexie.
+ * Ini jantung dari conflict resolution: row remote MENANG kalau
+ * updated_at server-nya lebih baru dari yang kita punya lokal — penuh
+ * (whole row), bukan field-level merge. Lihat catatan arsitektur:
+ * field-level merge berisiko untuk data keuangan.
  *
  * Kalau ada entry sync_queue yang masih pending untuk id ini, kita TUNDA
  * merge — supaya edit lokal yang belum sempat ke-push gak ketiban
@@ -61,6 +61,21 @@ export async function mergeRemoteWallet(remote: Wallet): Promise<void> {
   }
 }
 
+export async function mergeRemoteBudget(remote: Budget): Promise<void> {
+  const pendingForThisId = await db.sync_queue
+    .where("entity_id")
+    .equals(remote.id)
+    .and((i) => i.entity === "budget")
+    .count();
+
+  if (pendingForThisId > 0) return;
+
+  const local = await db.budgets.get(remote.id);
+  if (!local || new Date(remote.updated_at) >= new Date(local.updated_at)) {
+    await db.budgets.put(remote);
+  }
+}
+
 export function subscribeRealtime(householdId: string): () => void {
   const supabase = createClient();
 
@@ -105,6 +120,19 @@ export function subscribeRealtime(householdId: string): () => void {
         if (row) void mergeRemoteWallet(row);
       }
     )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "budgets",
+        filter: `household_id=eq.${householdId}`,
+      },
+      (payload) => {
+        const row = (payload.new ?? payload.old) as Budget | undefined;
+        if (row) void mergeRemoteBudget(row);
+      }
+    )
     .subscribe();
 
   return () => {
@@ -116,8 +144,8 @@ export function subscribeRealtime(householdId: string): () => void {
  * Reconcile fetch — dipanggil sekali tiap kali app kembali online (bukan
  * cuma andalin Realtime, karena event yang terjadi PAS device offline gak
  * akan pernah sampai lewat Realtime; harus di-pull manual). Ambil semua
- * row (transaksi + kategori + wallet) yang updated_at-nya lebih baru dari
- * waktu terakhir kita reconcile.
+ * row (transaksi + kategori + wallet + budget) yang updated_at-nya lebih
+ * baru dari waktu terakhir kita reconcile.
  */
 export async function reconcileAll(householdId: string): Promise<void> {
   const supabase = createClient();
@@ -127,17 +155,20 @@ export async function reconcileAll(householdId: string): Promise<void> {
   let txQuery = supabase.from("transactions").select("*").eq("household_id", householdId);
   let catQuery = supabase.from("categories").select("*").eq("household_id", householdId);
   let walletQuery = supabase.from("wallets").select("*").eq("household_id", householdId);
+  let budgetQuery = supabase.from("budgets").select("*").eq("household_id", householdId);
 
   if (lastSync) {
     txQuery = txQuery.gt("updated_at", lastSync);
     catQuery = catQuery.gt("updated_at", lastSync);
     walletQuery = walletQuery.gt("updated_at", lastSync);
+    budgetQuery = budgetQuery.gt("updated_at", lastSync);
   }
 
-  const [txResult, catResult, walletResult] = await Promise.all([
+  const [txResult, catResult, walletResult, budgetResult] = await Promise.all([
     txQuery,
     catQuery,
     walletQuery,
+    budgetQuery,
   ]);
 
   // Kalau ADA SATU AJA query yang gagal (misal network kepotong di
@@ -147,7 +178,9 @@ export async function reconcileAll(householdId: string): Promise<void> {
   // tadi gak akan pernah di-retry. Lebih aman reconcile ulang window
   // yang sama (idempotent, gak masalah proses dobel) daripada diam-diam
   // kehilangan data.
-  const hadError = Boolean(txResult.error || catResult.error || walletResult.error);
+  const hadError = Boolean(
+    txResult.error || catResult.error || walletResult.error || budgetResult.error
+  );
 
   // Checkpoint baru = updated_at TERBESAR dari data yang beneran
   // ke-fetch (server-authoritative), BUKAN jam device (new Date()).
@@ -172,6 +205,12 @@ export async function reconcileAll(householdId: string): Promise<void> {
   if (walletResult.data) {
     for (const row of walletResult.data as Wallet[]) {
       await mergeRemoteWallet(row);
+      if (!maxUpdatedAt || row.updated_at > maxUpdatedAt) maxUpdatedAt = row.updated_at;
+    }
+  }
+  if (budgetResult.data) {
+    for (const row of budgetResult.data as Budget[]) {
+      await mergeRemoteBudget(row);
       if (!maxUpdatedAt || row.updated_at > maxUpdatedAt) maxUpdatedAt = row.updated_at;
     }
   }

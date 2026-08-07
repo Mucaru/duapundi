@@ -16,6 +16,8 @@ import { TransactionFilterSheet } from "@/components/transaction/transaction-fil
 import { SyncStatusBadge } from "@/components/layout/sync-status-badge";
 import { SyncProvider } from "@/components/providers/sync-provider";
 import { SettingsMenu } from "@/components/layout/settings-menu";
+import { BudgetManagerSheet } from "@/components/budget/budget-manager-sheet";
+import { BudgetWarningBanner } from "@/components/budget/budget-warning-banner";
 import { PinLockScreen } from "@/components/pin/pin-lock-screen";
 import { usePinLock } from "@/hooks/use-pin-lock";
 
@@ -32,6 +34,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
   const [userFilter, setUserFilter] = useState<string | null>(null);
   const [walletFilter, setWalletFilter] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
 
   if (!pinReady) {
     return <main className="min-h-svh bg-background" />;
@@ -76,7 +79,12 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
           {userId && (
-            <SettingsMenu householdId={household.id} userId={userId} members={members} />
+            <SettingsMenu
+              householdId={household.id}
+              userId={userId}
+              members={members}
+              onOpenBudget={() => setBudgetSheetOpen(true)}
+            />
           )}
           <SyncStatusBadge householdId={household.id} />
         </div>
@@ -89,7 +97,14 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
         currentUserId={userId}
       />
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-4">
+        <BudgetWarningBanner
+          householdId={household.id}
+          onOpenBudget={() => setBudgetSheetOpen(true)}
+        />
+      </div>
+
+      <div className="mt-4 space-y-4">
         <TransactionFilterSheet
           categories={categories}
           wallets={wallets.filter((w) => !w.is_archived)}
@@ -127,6 +142,12 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
           onClose={() => setSelectedTransaction(null)}
         />
       )}
+
+      <BudgetManagerSheet
+        householdId={household.id}
+        open={budgetSheetOpen}
+        onOpenChange={setBudgetSheetOpen}
+      />
 
       {userId && (
         <QuickAddSheet

@@ -55,6 +55,14 @@ export class MoneyTrackerDB extends Dexie {
     this.version(2).stores({
       sync_queue: "++id, entity, entity_id, client_timestamp, retry_count",
     });
+
+    // v3: budgets sekarang beneran dipakai (sebelumnya cuma placeholder
+    // dari awal setup). Tambah index deleted_at, konsisten sama pola
+    // tabel lain (filter "yang belum dihapus" dan grup per bulan).
+    this.version(3).stores({
+      budgets:
+        "id, household_id, category_id, [household_id+deleted_at], [household_id+month+deleted_at]",
+    });
   }
 }
 

@@ -20,6 +20,8 @@ async function updateLocalTimestamp(
     await db.categories.update(id, { updated_at: updatedAt });
   } else if (entity === "wallet") {
     await db.wallets.update(id, { updated_at: updatedAt });
+  } else if (entity === "budget") {
+    await db.budgets.update(id, { updated_at: updatedAt });
   }
 }
 
@@ -31,6 +33,8 @@ async function softDeleteOrphanLocal(entity: SyncEntity, id: string): Promise<vo
     await db.categories.update(id, { deleted_at: now, updated_at: now });
   } else if (entity === "wallet") {
     await db.wallets.update(id, { deleted_at: now, updated_at: now });
+  } else if (entity === "budget") {
+    await db.budgets.update(id, { deleted_at: now, updated_at: now });
   }
 }
 
@@ -52,10 +56,12 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
         ? "categories"
         : item.entity === "wallet"
           ? "wallets"
-          : null;
+          : item.entity === "budget"
+            ? "budgets"
+            : null;
 
   if (!table) {
-    // budget belum ditangani sync engine — di luar scope MVP saat ini.
+    // household belum ditangani sync engine — di luar scope MVP saat ini.
     return true;
   }
 

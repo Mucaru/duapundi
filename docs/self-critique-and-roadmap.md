@@ -98,7 +98,7 @@ Sesuai urutan prioritas PRD v1.0 kamu sendiri (Fase 2 & 3):
 
 ### P1 (fokus selanjutnya — pengalaman harian lebih lengkap)
 5. Multi-wallet UI (tambah/edit wallet, pilih wallet pas input transaksi — sekarang hardcoded ke wallet pertama)
-6. Budget per kategori + indikator mendekati limit di kategori terkait
+6. ~~Budget per kategori + indikator mendekati limit di kategori terkait~~ ✅ Selesai (v1.2)
 7. Export CSV
 8. Unit test untuk sync engine (minimal `mergeRemoteTransaction` + `flushQueue` retry logic)
 

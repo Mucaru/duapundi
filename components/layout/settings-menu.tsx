@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, Tags, Wallet as WalletIcon, Lock, Users, LogOut, ChevronRight } from "lucide-react";
+import { Settings, Tags, Wallet as WalletIcon, Lock, Users, LogOut, ChevronRight, PiggyBank } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { CategoryManagerSheet } from "@/components/category/category-manager-sheet";
@@ -16,6 +16,7 @@ interface SettingsMenuProps {
   householdId: string;
   userId: string;
   members: { id: string; name: string }[];
+  onOpenBudget: () => void;
 }
 
 const MENU_ITEMS: { key: Exclude<ActiveSheet, null>; label: string; icon: typeof Tags }[] = [
@@ -25,7 +26,7 @@ const MENU_ITEMS: { key: Exclude<ActiveSheet, null>; label: string; icon: typeof
   { key: "invite", label: "Undang & keluar household", icon: Users },
 ];
 
-export function SettingsMenu({ householdId, userId, members }: SettingsMenuProps) {
+export function SettingsMenu({ householdId, userId, members, onOpenBudget }: SettingsMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
 
@@ -52,7 +53,31 @@ export function SettingsMenu({ householdId, userId, members }: SettingsMenuProps
             Pengaturan
           </SheetTitle>
           <div className="mt-4 space-y-1">
-            {MENU_ITEMS.map((item) => (
+            {MENU_ITEMS.slice(0, 2).map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => openSheet(item.key)}
+                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-ink transition-colors hover:bg-surface-muted"
+              >
+                <item.icon className="h-4 w-4 text-ink-muted" />
+                <span className="flex-1">{item.label}</span>
+                <ChevronRight className="h-4 w-4 text-ink-muted" />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onOpenBudget();
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-ink transition-colors hover:bg-surface-muted"
+            >
+              <PiggyBank className="h-4 w-4 text-ink-muted" />
+              <span className="flex-1">Budget bulanan</span>
+              <ChevronRight className="h-4 w-4 text-ink-muted" />
+            </button>
+            {MENU_ITEMS.slice(2).map((item) => (
               <button
                 key={item.key}
                 type="button"

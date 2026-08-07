@@ -2,7 +2,7 @@ import { db } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/client";
 
 export interface IntegrityReport {
-  entity: "transaction" | "category" | "wallet";
+  entity: "transaction" | "category" | "wallet" | "budget";
   localCount: number;
   serverCount: number;
   localOnlyPending: string[]; // ada lokal, gak ada server, TAPI masih di sync_queue — wajar, tinggal nunggu
@@ -32,6 +32,7 @@ export async function runIntegrityCheck(householdId: string): Promise<IntegrityR
     { entity: "transaction" as const, table: "transactions", localTable: db.transactions },
     { entity: "category" as const, table: "categories", localTable: db.categories },
     { entity: "wallet" as const, table: "wallets", localTable: db.wallets },
+    { entity: "budget" as const, table: "budgets", localTable: db.budgets },
   ];
 
   for (const cfg of configs) {
