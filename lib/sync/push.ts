@@ -1,6 +1,6 @@
 import { db } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/client";
-import type { SyncQueueItem, SyncEntity } from "@/types";
+import type { SyncQueueItem, SyncEntity, Budget } from "@/types";
 
 export const MAX_RETRY = 8;
 
@@ -78,25 +78,55 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
 
       if (error) {
         if (error.code === "23505") {
-          // Unique violation di primary key (id) — berarti insert kita
-          // SEBELUMNYA sebenernya udah sukses di server, cuma response-nya
-          // gak sempat nyampe ke client (koneksi kepotong tepat setelah
-          // server proses, sebelum balesannya diterima). Retry kedua ini
-          // nyoba insert id yang sama, wajar ketabrak constraint. Row-nya
-          // UDAH ada di server dengan benar — jangan retry selamanya,
-          // cukup selaraskan updated_at lokal dari row yang udah ada itu.
-          const { data: existing } = await supabase
+          // Unique violation. Ada 2 skenario beda penyebabnya:
+          //
+          // (a) Konflik di kolom `id` — insert kita SEBELUMNYA sebenernya
+          // udah sukses di server, cuma response-nya gak sempat nyampe ke
+          // client (koneksi kepotong tepat setelah server proses).
+          //
+          // (b) Khusus budget: konflik di unique constraint
+          // (household_id, category_id, month) — row yang ketabrak itu
+          // punya id BEDA, biasanya kejadian kalau 2 device nyaris
+          // bareng-bareng bikin budget buat kategori+bulan yang sama.
+          // Lookup by id doang gak bakal nemu apa-apa buat kasus ini.
+          const { data: byId } = await supabase
             .from(table)
-            .select("updated_at")
+            .select("*")
             .eq("id", item.entity_id)
-            .single();
-          if (existing) {
+            .maybeSingle();
+
+          if (byId) {
             await updateLocalTimestamp(
               item.entity,
               item.entity_id,
-              (existing as { updated_at: string }).updated_at
+              (byId as { updated_at: string }).updated_at
             );
+            return true;
           }
+
+          if (item.entity === "budget") {
+            const p = item.payload as {
+              household_id: string;
+              category_id: string;
+              month: string;
+            };
+            const { data: byCompositeKey } = await supabase
+              .from("budgets")
+              .select("*")
+              .eq("household_id", p.household_id)
+              .eq("category_id", p.category_id)
+              .eq("month", p.month)
+              .maybeSingle();
+
+            if (byCompositeKey) {
+              // Row lokal kita (dengan id kita sendiri) itu duplikat yang
+              // gak valid — row ASLI di server pakai id yang beda (punya
+              // device lain). Buang duplikat lokal, adopsi row server.
+              await db.budgets.delete(item.entity_id);
+              await db.budgets.put(byCompositeKey as Budget);
+            }
+          }
+
           return true;
         }
         throw error;
@@ -206,7 +236,20 @@ async function processItem(item: SyncQueueItem): Promise<boolean> {
   } catch (err) {
     // JANGAN log 'err' mentah ke console di production — bisa berisi
     // payload transaksi (data keuangan). Log pesan generik saja.
-    const message = err instanceof Error ? err.message : "unknown_error";
+    // PENTING: PostgrestError dari Supabase (yang kita `throw` di atas
+    // pas ada error dari .insert()/.update()) itu PLAIN OBJECT
+    // {message, details, hint, code} — BUKAN instance dari class Error
+    // bawaan JS. Cek `err instanceof Error` doang bakal gagal buat
+    // kasus ini dan jatuh ke "unknown_error" generik, kehilangan pesan
+    // asli yang sebenarnya paling penting buat debugging (contoh nyata:
+    // "unknown_error" nutupin pesan constraint violation yang
+    // sebenarnya kasih tau kenapa insert budget gagal terus).
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "unknown_error";
     if (process.env.NODE_ENV !== "production") {
       // eslint-disable-next-line no-console
       console.warn(

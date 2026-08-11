@@ -136,6 +136,18 @@ Sebelum coding sama sekali, disepakati dulu:
 **Gap ditemukan sebelum fitur dibangun:**
 - 🐛 Tabel `budgets` dari awal gak punya `deleted_at` & trigger `updated_at` — kelewat pas migration 0001. Fixed via `0008_budgets_deleted_at.sql` SEBELUM ada data beneran (untung ketauan lebih dulu).
 
+**Bug ditemukan & fixed setelah dipakai beneran:**
+- 🐛 **"unknown_error" nutupin pesan error asli** — `PostgrestError` dari Supabase itu plain object `{message, code, ...}`, BUKAN instance dari class `Error` JS. Cek `err instanceof Error` gagal buat kasus ini, jatuh ke pesan generik yang gak berguna buat debugging. Fixed: extract `.message` dari object apapun yang punya field itu, gak cuma dari instance Error.
+- 🐛 **Budget stuck gagal sync** — 2 kemungkinan akar masalah dibenerin: (1) UI ngizinin `limit_amount = 0` ke-submit (validasi cuma cek non-empty string, `"0"` lolos), padahal constraint Postgres nolak nilai itu selamanya; (2) unique constraint budget itu di kombinasi `(household_id, category_id, month)`, BUKAN di `id` — kalau 2 device nyaris bareng bikin budget kategori+bulan yang sama, insert kedua ketabrak constraint dengan row conflict yang id-nya BEDA, dan logic 23505 kita sebelumnya cuma nyari by `id` jadi gak ketemu apa-apa & nyangkut. Fixed: fallback lookup by composite key, adopsi row server yang asli kalau ketemu.
+- 🐛 **Wallet "2 di server, 1 di lokal"** — root cause: `reconcileAll` cuma narik data yang `updated_at`-nya lebih baru dari checkpoint terakhir (biar efisien); row yang entah kenapa kelewat (updated_at-nya lebih lama dari checkpoint yang udah kadung maju) gak akan PERNAH ketarik lagi lewat reconcile biasa manapun. Fixed: `runIntegrityCheck` sekarang **self-healing** — begitu ketemu row yang cuma ada di server, langsung fetch & merge saat itu juga, gak peduli checkpoint sama sekali.
+
+**Polish UX (BudgetManagerSheet):**
+- Kartu ringkasan "Total budget bulan ini" di atas (total limit vs total terpakai semua kategori)
+- Kategori diurutin: yang udah ada limit & paling mendesak persentasenya duluan, yang belum ada limit di bawah
+- Label bulan format Indonesia ("Agustus 2026", bukan "2026-08")
+- Nampilin "Sisa Rp X" (bukan cuma rasio terpakai/limit)
+- Tombol back (bukan cuma tutup sheet) pas lagi di form edit limit
+
 ---
 
 ## 🌐 Deploy
@@ -169,3 +181,6 @@ Sebelum coding sama sekali, disepakati dulu:
 5. **Operasi network yang di-retry harus idempotent** — unique violation = anggap sukses, bukan stuck selamanya.
 6. **`useEffect` + `setState` buat reset state pas prop berubah itu anti-pattern** — pakai "derived state saat render".
 7. **Tiap tabel baru HARUS punya `deleted_at` + trigger `updated_at` dari awal** — kelupaan di `budgets`, untung ketauan sebelum ada data beneran.
+8. **`PostgrestError` dari Supabase BUKAN instance dari `Error` JS** — jangan cek `err instanceof Error` doang buat extract pesan, atau bakal jatuh ke "unknown_error" generik dan kehilangan detail yang sebenernya paling penting.
+9. **Unique constraint yang bukan di kolom `id`** (misal budget: `household_id+category_id+month`) butuh handling 23505 yang beda — lookup by `id` gak bakal nemu row yang conflict, karena row conflict itu punya `id` yang beda. Perlu fallback lookup by composite key.
+10. **Reconcile berbasis checkpoint (`updated_at > lastSync`) punya blind spot**: row yang timestamp-nya lebih lama dari checkpoint yang udah kadung maju gak akan PERNAH ketarik lagi. Butuh mekanisme "full check" terpisah yang gak peduli checkpoint (integrity check) buat jaga-jaga.
