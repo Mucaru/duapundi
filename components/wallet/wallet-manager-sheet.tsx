@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Wallet as WalletIcon, Archive, Users } from "lucide-react";
+import { Wallet as WalletIcon, Archive, ArchiveRestore, Users } from "lucide-react";
 import { db } from "@/lib/db/schema";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createWalletLocal, archiveWalletLocal } from "@/lib/db/wallets";
+import { createWalletLocal, setWalletArchivedLocal } from "@/lib/db/wallets";
 import type { WalletType } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -38,17 +38,21 @@ export function WalletManagerSheet({
   const [type, setType] = useState<WalletType>("cash");
   const [isPrivate, setIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [pendingArchive, setPendingArchive] = useState<{ id: string; name: string } | null>(null);
 
-  const wallets = useLiveQuery(
+  const allWallets = useLiveQuery(
     () =>
       db.wallets
         .where("household_id")
         .equals(householdId)
-        .filter((w) => !w.is_archived)
+        .filter((w) => w.deleted_at === null)
         .toArray(),
     [householdId]
   );
+
+  const wallets = (allWallets ?? []).filter((w) => showArchived || !w.is_archived);
+  const archivedCount = (allWallets ?? []).filter((w) => w.is_archived).length;
 
   async function handleAdd() {
     if (!name.trim() || saving) return;
@@ -77,32 +81,65 @@ export function WalletManagerSheet({
         </SheetTitle>
 
         <div className="mt-4 space-y-2">
-          {(wallets ?? []).map((w) => (
+          {wallets.map((w) => (
             <div
               key={w.id}
-              className="flex items-center gap-3 rounded-2xl bg-surface-muted px-3 py-2.5"
+              className={cn(
+                "flex items-center gap-3 rounded-2xl px-3 py-2.5",
+                w.is_archived ? "bg-surface opacity-60" : "bg-surface-muted"
+              )}
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <WalletIcon className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-ink">{w.name}</p>
+                <p className="truncate text-sm font-medium text-ink">
+                  {w.name}
+                  {w.is_archived && (
+                    <span className="ml-1.5 text-xs font-normal text-ink-muted">
+                      · Diarsipkan
+                    </span>
+                  )}
+                </p>
                 <p className="flex items-center gap-1 text-xs text-ink-muted">
                   <Users className="h-3 w-3" />
                   {memberName(w.owner_user_id)}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setPendingArchive({ id: w.id, name: w.name })}
-                aria-label="Arsipkan dompet"
-              >
-                <Archive className="h-4 w-4 text-ink-muted hover:text-danger" />
-              </button>
+              {w.is_archived ? (
+                <button
+                  type="button"
+                  onClick={() => void setWalletArchivedLocal(w.id, false)}
+                  aria-label="Batalkan arsip dompet"
+                  className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                >
+                  <ArchiveRestore className="h-3.5 w-3.5" />
+                  Aktifkan lagi
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPendingArchive({ id: w.id, name: w.name })}
+                  aria-label="Arsipkan dompet"
+                >
+                  <Archive className="h-4 w-4 text-ink-muted hover:text-danger" />
+                </button>
+              )}
             </div>
           ))}
-          {wallets?.length === 0 && (
+          {wallets.length === 0 && (
             <p className="py-4 text-center text-sm text-ink-muted">Belum ada dompet.</p>
+          )}
+          {archivedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowArchived((v) => !v)}
+              className="w-full pt-1 text-center text-xs font-medium text-ink-muted underline decoration-dotted underline-offset-4"
+            >
+              {showArchived
+                ? "Sembunyikan yang diarsipkan"
+                : `Tampilkan ${archivedCount} dompet yang diarsipkan`}
+            </button>
           )}
         </div>
 
@@ -166,7 +203,7 @@ export function WalletManagerSheet({
         destructive
         confirmLabel="Arsipkan"
         onConfirm={() => {
-          if (pendingArchive) void archiveWalletLocal(pendingArchive.id);
+          if (pendingArchive) void setWalletArchivedLocal(pendingArchive.id, true);
           setPendingArchive(null);
         }}
       />

@@ -41,14 +41,14 @@ export async function createWalletLocal(input: CreateWalletInput): Promise<Walle
   return wallet;
 }
 
-export async function archiveWalletLocal(id: string): Promise<void> {
+export async function setWalletArchivedLocal(id: string, archived: boolean): Promise<void> {
   const now = new Date().toISOString();
 
   await db.transaction("rw", db.wallets, db.sync_queue, async () => {
     const existing = await db.wallets.get(id);
     if (!existing) return;
 
-    const updated: Wallet = { ...existing, is_archived: true, updated_at: now };
+    const updated: Wallet = { ...existing, is_archived: archived, updated_at: now };
     await db.wallets.put(updated);
     await db.sync_queue.add({
       entity: "wallet",
@@ -62,4 +62,9 @@ export async function archiveWalletLocal(id: string): Promise<void> {
       created_at: now,
     });
   });
+}
+
+/** @deprecated pakai setWalletArchivedLocal(id, true) */
+export async function archiveWalletLocal(id: string): Promise<void> {
+  return setWalletArchivedLocal(id, true);
 }
