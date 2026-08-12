@@ -20,7 +20,7 @@ interface TransactionFiltersProps {
   onWalletChange: (value: string | null) => void;
 }
 
-const DATE_RANGE_LABELS: Record<DateRangeFilter, string> = {
+export const DATE_RANGE_LABELS: Record<DateRangeFilter, string> = {
   this_month: "Bulan ini",
   last_month: "Bulan lalu",
   all: "Semua",

@@ -91,3 +91,108 @@ body {
 .sheet-content[data-state="open"] {
   animation: sheet-slide-up 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* =========================================================
+   SISTEM TEMA — theme dipilih user, disimpan localStorage,
+   diterapkan via [data-theme] di <html>. Default theme (tanpa
+   atribut) tetap "clean-trustworthy" yang udah didefinisiin di :root
+   di atas. Tema lain di-override di sini.
+   ========================================================= */
+
+.theme-card-shell {
+  background: var(--primary);
+}
+
+/* ---- Glass (Glassmorphism) ---- */
+[data-theme="glass"] {
+  --background: #eef1f7;
+  --surface: rgba(255, 255, 255, 0.6);
+  --surface-muted: rgba(255, 255, 255, 0.38);
+  --ink: #1e2530;
+  --ink-muted: #5b6472;
+  --border: rgba(255, 255, 255, 0.5);
+  --primary: #3b6fa0;
+  --primary-foreground: #ffffff;
+  --accent-warm: #e2a26b;
+  --accent-warm-soft: rgba(226, 162, 107, 0.18);
+  --income: #2e9166;
+  --income-soft: rgba(46, 145, 102, 0.15);
+  --expense: #c15a4a;
+  --expense-soft: rgba(193, 90, 74, 0.15);
+  --danger: #c0392b;
+  --ring: #3b6fa0;
+}
+[data-theme="glass"] body {
+  background: linear-gradient(160deg, #dbe6f5 0%, #eef1f7 45%, #f5e9f0 100%);
+  background-attachment: fixed;
+}
+[data-theme="glass"] .theme-card-shell {
+  background: linear-gradient(135deg, rgba(59, 111, 160, 0.88), rgba(59, 111, 160, 0.68));
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+[data-theme="glass"] .theme-surface {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ---- Pink ---- */
+[data-theme="pink"] {
+  --background: #fdf3f6;
+  --surface: #ffffff;
+  --surface-muted: #fbe7ee;
+  --ink: #3a1f2b;
+  --ink-muted: #8a6575;
+  --border: #f3d3e0;
+  --primary: #d6608c;
+  --primary-foreground: #ffffff;
+  --accent-warm: #f2a6c4;
+  --accent-warm-soft: #fbe0ea;
+  --income: #57a06f;
+  --income-soft: #e7f4ea;
+  --expense: #d1567a;
+  --expense-soft: #fbe3ea;
+  --danger: #c0392b;
+  --ring: #d6608c;
+}
+
+/* ---- Natal (Christmas) ---- */
+[data-theme="natal"] {
+  --background: #fbfaf7;
+  --surface: #ffffff;
+  --surface-muted: #f1ede4;
+  --ink: #2a1414;
+  --ink-muted: #6e5a52;
+  --border: #e6ddd0;
+  --primary: #8c1f28;
+  --primary-foreground: #ffffff;
+  --accent-warm: #c99a3e;
+  --accent-warm-soft: #f5e8cd;
+  --income: #2f6b45;
+  --income-soft: #e2efe4;
+  --expense: #a3222c;
+  --expense-soft: #f5dede;
+  --danger: #7a1319;
+  --ring: #8c1f28;
+}
+
+/* ---- Summer ---- */
+[data-theme="summer"] {
+  --background: #fffaf0;
+  --surface: #ffffff;
+  --surface-muted: #fef0d9;
+  --ink: #2b2410;
+  --ink-muted: #7a6b45;
+  --border: #fbe2a8;
+  --primary: #ec8f2e;
+  --primary-foreground: #ffffff;
+  --accent-warm: #3aa6a6;
+  --accent-warm-soft: #d9f0f0;
+  --income: #2e9166;
+  --income-soft: #e3f4ea;
+  --expense: #e0603f;
+  --expense-soft: #fbe3db;
+  --danger: #c0392b;
+  --ring: #ec8f2e;
+}

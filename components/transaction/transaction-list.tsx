@@ -130,7 +130,7 @@ export function TransactionList({
                   key={tx.id}
                   type="button"
                   onClick={() => onSelectTransaction?.(tx)}
-                  className="flex w-full items-center gap-3 rounded-2xl bg-surface px-3 py-3 text-left transition-colors active:bg-surface-muted"
+                  className="theme-surface flex w-full items-center gap-3 rounded-2xl bg-surface px-3 py-3 text-left transition-colors active:bg-surface-muted"
                 >
                   <span
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"

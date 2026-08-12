@@ -162,6 +162,29 @@ Sebelum coding sama sekali, disepakati dulu:
 - 🐛 **Migration 0008 belum dijalankan** menyebabkan error "Could not find the 'deleted_at' column" — bukan bug kode, tapi migration yang kelewat dijalankan di Supabase. Jadi pelajaran: **selalu cross-check migration baru beneran udah dieksekusi**, apalagi kalau ada perubahan schema kolom (bukan cuma data).
 - ℹ️ **Budget "Rp100rb muncul sendiri" — bukan bug.** Itu jejak local-first architecture: percobaan set limit SEBELUM migration 0008 dijalankan udah kadung ke-optimistic-write ke Dexie lokal duluan sebelum push-nya gagal (kolom belum ada). Setelah migration jalan, item itu di-retry otomatis dan akhirnya beneran sukses sync.
 
+---
+
+## 🎨 UX Upgrade Round
+
+### Balance Card Ngikutin Filter
+- `BalanceCard` sebelumnya selalu hardcode "bulan ini" — sekarang nerima filter aktif (tanggal/kategori/orang/dompet) yang sama kayak `TransactionList`, angka saldo/pemasukan/pengeluaran selalu match sama riwayat yang ditampilkan
+- Query tetap efisien: pakai `listTransactions` shared function (index `household_id` di Dexie), 100% lokal, gak ada tambahan hit ke Supabase sama sekali
+- Streak sengaja TETEP gak ikut filter (konsepnya "rekor pencatatan harian" absolut, gak masuk akal kalau difilter kategori tertentu)
+
+### Input Transaksi Massal (Bulk Add)
+- `BulkAddSheet` — tombol `ListPlus` baru di header, buka form multi-baris (tipe, kategori, nominal, catatan per baris), tambah/hapus baris bebas
+- Simpan semua transaksi valid dalam 1 tap, ditulis sequential ke `createTransactionLocal` (tetap murni operasi lokal, gak ada round-trip network di titik ini)
+
+### Sistem Tema (termasuk Glassmorphism)
+- 5 tema: **Klasik** (default), **Glass** (glassmorphism — card blur + gradient background), **Pink**, **Natal**, **Summer**
+- CSS custom properties di-override per `[data-theme="X"]` di `globals.css`, disimpan localStorage, diterapkan via `document.documentElement.dataset.theme`
+- `useTheme` hook pakai lazy initial state (bukan `useEffect`+`setState`) — pola yang sama kayak fix sebelumnya
+- `ThemePickerSheet` — grid swatch, akses dari menu Pengaturan → "Tema tampilan". Ganti tema gak ngaruh ke data sama sekali (murni visual, client-side only)
+
+---
+
+## 🌐 Deploy
+
 - GitHub: [github.com/Mucaru/duapundi](https://github.com/Mucaru/duapundi)
 - Vercel: **duapundi.vercel.app**
 

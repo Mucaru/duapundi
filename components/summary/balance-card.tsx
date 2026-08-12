@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ChevronDown } from "lucide-react";
 import { db } from "@/lib/db/schema";
+import { listTransactions } from "@/lib/db/transactions";
 import { formatIDR, cn } from "@/lib/utils";
 
 interface BalanceCardProps {
@@ -11,6 +12,14 @@ interface BalanceCardProps {
   greetingName: string;
   members: { id: string; name: string }[];
   currentUserId: string | null;
+  // Filter aktif — sama persis yang dipakai TransactionList, biar
+  // angka di kartu ini selalu match sama riwayat yang lagi ditampilkan.
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  categoryId?: string | null;
+  userFilter?: string | null;
+  walletId?: string | null;
+  rangeLabel: string;
 }
 
 function startOfMonth(): string {
@@ -23,9 +32,49 @@ export function BalanceCard({
   greetingName,
   members,
   currentUserId,
+  dateFrom,
+  dateTo,
+  categoryId,
+  userFilter,
+  walletId,
+  rangeLabel,
 }: BalanceCardProps) {
   const [showBreakdown, setShowBreakdown] = useState(false);
-  const monthTx = useLiveQuery(
+
+  // Angka utama (saldo/pemasukan/pengeluaran) ngikutin filter yang lagi
+  // aktif — query-nya lewat listTransactions, index household_id di
+  // Dexie (bukan full scan), 100% lokal, gak nyentuh Supabase.
+  const filteredTx = useLiveQuery(
+    () =>
+      listTransactions(householdId, {
+        from: dateFrom,
+        to: dateTo,
+        categoryId,
+        userId: userFilter,
+        walletId,
+      }),
+    [householdId, dateFrom, dateTo, categoryId, userFilter, walletId]
+  );
+
+  const income = (filteredTx ?? [])
+    .filter((t) => t.type === "income")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const expense = (filteredTx ?? [])
+    .filter((t) => t.type === "expense")
+    .reduce((sum, t) => sum + t.amount, 0);
+  const balance = income - expense;
+
+  const expenseByUser = members.map((m) => ({
+    ...m,
+    total: (filteredTx ?? [])
+      .filter((t) => t.type === "expense" && t.user_id === m.id)
+      .reduce((sum, t) => sum + t.amount, 0),
+  }));
+
+  // Streak SENGAJA gak ikut filter — ini "rekor pencatatan harian"
+  // absolut, gak masuk akal kalau difilter kategori/orang tertentu.
+  // Query terpisah, ringan (cuma 30 hari terakhir via index household_id).
+  const recentTx = useLiveQuery(
     () =>
       db.transactions
         .where("household_id")
@@ -34,29 +83,9 @@ export function BalanceCard({
         .toArray(),
     [householdId]
   );
-
-  const income = (monthTx ?? [])
-    .filter((t) => t.type === "income")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const expense = (monthTx ?? [])
-    .filter((t) => t.type === "expense")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const balance = income - expense;
-
-  // Breakdown pengeluaran per member — cuma relevan kalau household
-  // beranggotakan lebih dari 1 orang.
-  const expenseByUser = members.map((m) => ({
-    ...m,
-    total: (monthTx ?? [])
-      .filter((t) => t.type === "expense" && t.user_id === m.id)
-      .reduce((sum, t) => sum + t.amount, 0),
-  }));
-
-  // Streak sederhana: jumlah hari unik dengan transaksi dalam 30 hari terakhir,
-  // berurutan mundur dari hari ini. Sentuhan personal — bukan metrik serius.
   const streakDays = (() => {
-    if (!monthTx) return 0;
-    const dates = new Set(monthTx.map((t) => t.date));
+    if (!recentTx) return 0;
+    const dates = new Set(recentTx.map((t) => t.date));
     let streak = 0;
     const cursor = new Date();
     while (dates.has(cursor.toISOString().slice(0, 10))) {
@@ -67,21 +96,19 @@ export function BalanceCard({
   })();
 
   return (
-    <div className="mx-6 mt-6 rounded-3xl bg-primary px-6 py-7 text-primary-foreground">
+    <div className="theme-card-shell mx-6 mt-6 overflow-hidden rounded-3xl px-6 py-7 text-primary-foreground">
       <p className="text-sm text-primary-foreground/80">Halo, {greetingName} 👋</p>
       <p className="mt-1 font-display text-4xl font-semibold tabular-nums">
         {formatIDR(balance)}
       </p>
-      <p className="mt-1 text-xs text-primary-foreground/70">
-        Saldo bulan ini
-      </p>
+      <p className="mt-1 text-xs text-primary-foreground/70">Saldo · {rangeLabel}</p>
 
       <div className="mt-5 flex gap-4">
-        <div className="flex-1 rounded-2xl bg-white/10 px-4 py-3">
+        <div className="flex-1 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
           <p className="text-xs text-primary-foreground/70">Pemasukan</p>
           <p className="mt-0.5 font-semibold tabular-nums">{formatIDR(income)}</p>
         </div>
-        <div className="flex-1 rounded-2xl bg-white/10 px-4 py-3">
+        <div className="flex-1 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
           <p className="text-xs text-primary-foreground/70">Pengeluaran</p>
           <p className="mt-0.5 font-semibold tabular-nums">{formatIDR(expense)}</p>
         </div>
@@ -100,7 +127,7 @@ export function BalanceCard({
             onClick={() => setShowBreakdown((v) => !v)}
             className="flex w-full items-center justify-between text-xs text-primary-foreground/70"
           >
-            Pengeluaran per orang
+            Pengeluaran per orang · {rangeLabel}
             <ChevronDown
               className={cn("h-3.5 w-3.5 transition-transform", showBreakdown && "rotate-180")}
             />

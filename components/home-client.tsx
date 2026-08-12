@@ -10,8 +10,11 @@ import { TransactionDetailSheet } from "@/components/transaction/transaction-det
 import type { Transaction } from "@/types";
 import {
   dateRangeToBounds,
+  DATE_RANGE_LABELS,
   type DateRangeFilter,
 } from "@/components/transaction/transaction-filters";
+import { BulkAddSheet } from "@/components/transaction/bulk-add-sheet";
+import { ThemePickerSheet } from "@/components/theme/theme-picker-sheet";
 import { TransactionFilterSheet } from "@/components/transaction/transaction-filter-sheet";
 import { SyncStatusBadge } from "@/components/layout/sync-status-badge";
 import { SyncProvider } from "@/components/providers/sync-provider";
@@ -35,6 +38,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
   const [walletFilter, setWalletFilter] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
+  const [themeSheetOpen, setThemeSheetOpen] = useState(false);
 
   if (!pinReady) {
     return <main className="min-h-svh bg-background" />;
@@ -70,6 +74,14 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
     );
   }
 
+  const extraFilterCount = [categoryFilter, userFilter, walletFilter].filter(
+    (v) => v !== null
+  ).length;
+  const rangeLabel =
+    extraFilterCount === 0
+      ? DATE_RANGE_LABELS[dateRange]
+      : `${DATE_RANGE_LABELS[dateRange]} · ${extraFilterCount} filter`;
+
   return (
     <main className="min-h-svh bg-background pb-6">
       <SyncProvider householdId={household.id} />
@@ -79,12 +91,21 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
         </p>
         <div className="flex flex-wrap items-center gap-1.5">
           {userId && (
-            <SettingsMenu
-              householdId={household.id}
-              userId={userId}
-              members={members}
-              onOpenBudget={() => setBudgetSheetOpen(true)}
-            />
+            <>
+              <BulkAddSheet
+                categories={categories}
+                wallets={wallets}
+                householdId={household.id}
+                userId={userId}
+              />
+              <SettingsMenu
+                householdId={household.id}
+                userId={userId}
+                members={members}
+                onOpenBudget={() => setBudgetSheetOpen(true)}
+                onOpenTheme={() => setThemeSheetOpen(true)}
+              />
+            </>
           )}
           <SyncStatusBadge householdId={household.id} />
         </div>
@@ -95,6 +116,12 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
         greetingName={fallbackName}
         members={members}
         currentUserId={userId}
+        dateFrom={dateRangeToBounds(dateRange).from}
+        dateTo={dateRangeToBounds(dateRange).to}
+        categoryId={categoryFilter}
+        userFilter={userFilter}
+        walletId={walletFilter}
+        rangeLabel={rangeLabel}
       />
 
       <div className="mt-4">
@@ -150,6 +177,8 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
         open={budgetSheetOpen}
         onOpenChange={setBudgetSheetOpen}
       />
+
+      <ThemePickerSheet open={themeSheetOpen} onOpenChange={setThemeSheetOpen} />
 
       {userId && (
         <QuickAddSheet
