@@ -150,7 +150,17 @@ Sebelum coding sama sekali, disepakati dulu:
 
 ---
 
-## 🌐 Deploy
+### 📤 Export CSV
+- `lib/db/transactions.ts`: `listTransactions` di-upgrade jadi shared filter function (dipakai bareng `TransactionList` UI dan CSV export) — satu sumber kebenaran filter, biar hasil export selalu match persis sama yang lagi ditampilkan di layar
+- `lib/export/csv.ts`: konversi transaksi → CSV (RFC 4180 escaping, BOM buat compat Excel), trigger download via Blob
+- Tombol "Export CSV" di dalam `TransactionFilterSheet` — **flexible ngikutin filter aktif** (tanggal/kategori/orang/dompet), bukan selalu export semua data
+- **Efisiensi:** query CSV 100% dari Dexie lokal, NOL hit ke Supabase — export gak pernah nyentuh database server sama sekali, seberapa sering pun dipencet
+
+## 🐛 Round Bugfix Lanjutan (setelah budget fitur dipakai beneran)
+
+- 🐛 **Wallet un-archive belum ada** — user gak sengaja archive 1 dari 2 wallet, gak ada cara balikin. Fixed: `setWalletArchivedLocal(id, archived)` generik dua arah + toggle "Tampilkan yang diarsipkan" di UI.
+- 🐛 **Migration 0008 belum dijalankan** menyebabkan error "Could not find the 'deleted_at' column" — bukan bug kode, tapi migration yang kelewat dijalankan di Supabase. Jadi pelajaran: **selalu cross-check migration baru beneran udah dieksekusi**, apalagi kalau ada perubahan schema kolom (bukan cuma data).
+- ℹ️ **Budget "Rp100rb muncul sendiri" — bukan bug.** Itu jejak local-first architecture: percobaan set limit SEBELUM migration 0008 dijalankan udah kadung ke-optimistic-write ke Dexie lokal duluan sebelum push-nya gagal (kolom belum ada). Setelah migration jalan, item itu di-retry otomatis dan akhirnya beneran sukses sync.
 
 - GitHub: [github.com/Mucaru/duapundi](https://github.com/Mucaru/duapundi)
 - Vercel: **duapundi.vercel.app**
@@ -160,7 +170,7 @@ Sebelum coding sama sekali, disepakati dulu:
 ## 📋 Backlog Belum Dikerjain
 
 - [x] ~~Budget per kategori + indikator mendekati limit~~ ✅
-- [ ] Export CSV
+- [x] ~~Export CSV~~ ✅
 - [ ] Unit test sync engine
 - [ ] Grafik/insight (Recharts udah ke-install, belum dipakai)
 - [ ] Shared expense / split bill

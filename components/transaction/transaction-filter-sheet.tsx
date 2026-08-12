@@ -1,15 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Download } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { TransactionFilters, type DateRangeFilter } from "./transaction-filters";
+import {
+  TransactionFilters,
+  dateRangeToBounds,
+  type DateRangeFilter,
+} from "./transaction-filters";
+import { listTransactions } from "@/lib/db/transactions";
+import { transactionsToCsv, downloadCsv } from "@/lib/export/csv";
 import type { Category, Wallet } from "@/types";
 
 interface TransactionFilterSheetProps {
+  householdId: string;
   categories: Category[];
   wallets: Wallet[];
+  allWallets: Wallet[]; // termasuk yang diarsipkan — khusus lookup nama di CSV export
   members: { id: string; name: string }[];
   currentUserId: string | null;
   dateRange: DateRangeFilter;
@@ -30,6 +38,7 @@ const DATE_RANGE_LABELS: Record<DateRangeFilter, string> = {
 
 export function TransactionFilterSheet(props: TransactionFilterSheetProps) {
   const [open, setOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const extraActiveCount = [
     props.categoryId !== null,
@@ -41,6 +50,41 @@ export function TransactionFilterSheet(props: TransactionFilterSheetProps) {
     extraActiveCount === 0
       ? DATE_RANGE_LABELS[props.dateRange]
       : `${DATE_RANGE_LABELS[props.dateRange]} · ${extraActiveCount} filter lain`;
+
+  async function handleExport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // Export "flexible" — ngikutin persis filter yang lagi aktif di
+      // layar (tanggal, kategori, orang, dompet), bukan selalu semua
+      // data. Query-nya 100% dari Dexie lokal (listTransactions), NOL
+      // hit ke Supabase — efisien dan gak ada resiko apapun ke database
+      // server, seberapa sering pun tombol ini dipencet.
+      const bounds = dateRangeToBounds(props.dateRange);
+      const transactions = await listTransactions(props.householdId, {
+        from: bounds.from,
+        to: bounds.to,
+        categoryId: props.categoryId,
+        userId: props.userFilter,
+        walletId: props.walletId,
+      });
+
+      const csv = transactionsToCsv(transactions, {
+        categories: props.categories,
+        wallets: props.allWallets,
+        members: props.members,
+        currentUserId: props.currentUserId,
+      });
+
+      const rangeLabel = DATE_RANGE_LABELS[props.dateRange]
+        .toLowerCase()
+        .replace(/\s+/g, "-");
+      const today = new Date().toISOString().slice(0, 10);
+      downloadCsv(`money-tracker-${rangeLabel}-${today}.csv`, csv);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -60,9 +104,23 @@ export function TransactionFilterSheet(props: TransactionFilterSheetProps) {
         <div className="mt-4">
           <TransactionFilters {...props} />
         </div>
-        <Button className="mt-6 w-full" onClick={() => setOpen(false)}>
-          Terapkan
-        </Button>
+        <div className="mt-6 flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            <Download className="h-4 w-4" />
+            {exporting ? "Nyiapin..." : "Export CSV"}
+          </Button>
+          <Button className="flex-1" onClick={() => setOpen(false)}>
+            Terapkan
+          </Button>
+        </div>
+        <p className="mt-2 text-center text-xs text-ink-muted">
+          Export ngikutin filter yang lagi aktif di atas
+        </p>
       </SheetContent>
     </Sheet>
   );

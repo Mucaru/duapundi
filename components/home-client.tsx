@@ -106,8 +106,10 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
 
       <div className="mt-4 space-y-4">
         <TransactionFilterSheet
+          householdId={household.id}
           categories={categories}
           wallets={wallets.filter((w) => !w.is_archived)}
+          allWallets={wallets}
           members={members}
           currentUserId={userId}
           dateRange={dateRange}

@@ -141,20 +141,42 @@ export async function deleteTransactionLocal(
 }
 
 /** Query untuk UI — hanya baca dari Dexie, tidak pernah touch network. */
+export interface TransactionFilterOptions {
+  from?: string | null;
+  to?: string | null;
+  categoryId?: string | null;
+  userId?: string | null;
+  walletId?: string | null;
+}
+
+/**
+ * Query filter yang dipakai BARENG oleh TransactionList (UI) dan CSV
+ * export — satu sumber kebenaran buat logic filter, biar hasil export
+ * selalu match persis sama apa yang lagi ditampilkan di layar, gak ada
+ * divergensi logic filter di dua tempat beda.
+ *
+ * Murni baca dari Dexie lokal (IndexedDB) — TIDAK PERNAH nyentuh
+ * network/Supabase sama sekali. Efisien karena Dexie query pakai
+ * index household_id (bukan full scan), dan filter tambahan jalan di
+ * memory atas hasil yang udah dipersempit itu.
+ */
 export async function listTransactions(
   householdId: string,
-  opts?: { from?: string; to?: string; categoryId?: string }
+  opts?: TransactionFilterOptions
 ): Promise<Transaction[]> {
-  let items = await db.transactions
+  const items = await db.transactions
     .where("household_id")
     .equals(householdId)
-    .filter((t) => t.deleted_at === null)
+    .filter((t) => {
+      if (t.deleted_at !== null) return false;
+      if (opts?.from && t.date < opts.from) return false;
+      if (opts?.to && t.date > opts.to) return false;
+      if (opts?.categoryId && t.category_id !== opts.categoryId) return false;
+      if (opts?.userId && t.user_id !== opts.userId) return false;
+      if (opts?.walletId && t.wallet_id !== opts.walletId) return false;
+      return true;
+    })
     .toArray();
-
-  if (opts?.from) items = items.filter((t) => t.date >= opts.from!);
-  if (opts?.to) items = items.filter((t) => t.date <= opts.to!);
-  if (opts?.categoryId)
-    items = items.filter((t) => t.category_id === opts.categoryId);
 
   return items.sort((a, b) => b.date.localeCompare(a.date));
 }

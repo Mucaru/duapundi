@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db/schema";
+import { listTransactions } from "@/lib/db/transactions";
 import { formatIDR } from "@/lib/utils";
 import type { Category, Transaction, Wallet } from "@/types";
 
@@ -55,20 +56,13 @@ export function TransactionList({
 
   const transactions = useLiveQuery(
     () =>
-      db.transactions
-        .where("household_id")
-        .equals(householdId)
-        .filter((t) => {
-          if (t.deleted_at !== null) return false;
-          if (dateFrom && t.date < dateFrom) return false;
-          if (dateTo && t.date > dateTo) return false;
-          if (categoryId && t.category_id !== categoryId) return false;
-          if (userFilter && t.user_id !== userFilter) return false;
-          if (walletId && t.wallet_id !== walletId) return false;
-          return true;
-        })
-        .reverse()
-        .sortBy("date"),
+      listTransactions(householdId, {
+        from: dateFrom,
+        to: dateTo,
+        categoryId,
+        userId: userFilter,
+        walletId,
+      }),
     [householdId, dateFrom, dateTo, categoryId, userFilter, walletId]
   );
 
