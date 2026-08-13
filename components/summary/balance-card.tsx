@@ -6,6 +6,8 @@ import { ChevronDown } from "lucide-react";
 import { db } from "@/lib/db/schema";
 import { listTransactions } from "@/lib/db/transactions";
 import { formatIDR, cn } from "@/lib/utils";
+import { useTheme } from "@/hooks/use-theme";
+import { ThemeMascot } from "@/components/theme/theme-mascot";
 
 interface BalanceCardProps {
   householdId: string;
@@ -40,6 +42,7 @@ export function BalanceCard({
   rangeLabel,
 }: BalanceCardProps) {
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const { theme } = useTheme();
 
   // Angka utama (saldo/pemasukan/pengeluaran) ngikutin filter yang lagi
   // aktif — query-nya lewat listTransactions, index household_id di
@@ -96,9 +99,13 @@ export function BalanceCard({
   })();
 
   return (
-    <div className="theme-card-shell mx-6 mt-6 overflow-hidden rounded-3xl px-6 py-7 text-primary-foreground">
+    <div className="theme-card-shell relative mx-6 mt-6 overflow-hidden rounded-3xl px-6 py-7 text-primary-foreground">
+      <ThemeMascot theme={theme} className="absolute -right-2 -top-2 h-24 w-24 opacity-90" />
       <p className="text-sm text-primary-foreground/80">Halo, {greetingName} 👋</p>
-      <p className="mt-1 font-display text-4xl font-semibold tabular-nums">
+      <p
+        key={balance}
+        className="animate-number mt-1 font-display text-4xl font-semibold tabular-nums"
+      >
         {formatIDR(balance)}
       </p>
       <p className="mt-1 text-xs text-primary-foreground/70">Saldo · {rangeLabel}</p>

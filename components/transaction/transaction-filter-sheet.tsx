@@ -91,7 +91,7 @@ export function TransactionFilterSheet(props: TransactionFilterSheetProps) {
       <SheetTrigger asChild>
         <button
           type="button"
-          className="mx-6 flex items-center gap-2 rounded-2xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-ink"
+          className="tap-feedback mx-6 flex items-center gap-2 rounded-2xl border border-border bg-surface px-4 py-2.5 text-sm font-medium text-ink"
         >
           <SlidersHorizontal className="h-4 w-4 text-ink-muted" />
           {label}

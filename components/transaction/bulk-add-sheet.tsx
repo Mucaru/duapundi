@@ -1,20 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, ListPlus } from "lucide-react";
+import { X, ListPlus, Check } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Numpad } from "./numpad";
 import { createTransactionLocal } from "@/lib/db/transactions";
 import type { Category, TransactionType, Wallet } from "@/types";
 import { cn, formatIDR } from "@/lib/utils";
 
-interface DraftRow {
+interface QueuedItem {
   key: string;
   type: TransactionType;
-  categoryId: string | null;
-  amount: string;
-  note: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  amount: number;
 }
 
 interface BulkAddSheetProps {
@@ -24,64 +25,84 @@ interface BulkAddSheetProps {
   userId: string;
 }
 
-function newRow(defaultType: TransactionType = "expense"): DraftRow {
-  return {
-    key: crypto.randomUUID(),
-    type: defaultType,
-    categoryId: null,
-    amount: "",
-    note: "",
-  };
-}
-
+/**
+ * Alternatif dari form grid multi-baris (versi sebelumnya, dirasa
+ * susah dipakai) — sekarang pola-nya SAMA PERSIS kayak quick-add
+ * biasa (kategori → numpad → tap tambah), cuma diulang beberapa kali
+ * sebelum semuanya disimpan bareng di akhir. Lebih familiar karena
+ * gerakannya identik sama flow yang udah biasa dipakai user.
+ */
 export function BulkAddSheet({ categories, wallets, householdId, userId }: BulkAddSheetProps) {
   const [open, setOpen] = useState(false);
-  const [rows, setRows] = useState<DraftRow[]>([newRow(), newRow()]);
+  const [type, setType] = useState<TransactionType>("expense");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [amount, setAmount] = useState("");
+  const [queue, setQueue] = useState<QueuedItem[]>([]);
   const [saving, setSaving] = useState(false);
 
   const defaultWallet = wallets.find((w) => !w.is_archived);
+  const visibleCategories = categories
+    .filter((c) => c.type === type)
+    .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0) || a.sort_order - b.sort_order);
 
-  const validRows = rows.filter(
-    (r) => r.categoryId && parseInt(r.amount || "0", 10) > 0
+  const total = queue.reduce(
+    (sum, q) => sum + (q.type === "income" ? q.amount : -q.amount),
+    0
   );
-  const totalAmount = validRows.reduce((sum, r) => sum + parseInt(r.amount || "0", 10), 0);
 
-  function updateRow(key: string, patch: Partial<DraftRow>) {
-    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  function reset() {
+    setQueue([]);
+    setAmount("");
+    setCategoryId(null);
+    setType("expense");
   }
 
-  function removeRow(key: string) {
-    setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.key !== key) : prev));
+  function handleAddToQueue() {
+    const numericAmount = parseInt(amount || "0", 10);
+    if (!categoryId || numericAmount <= 0) return;
+    const cat = categories.find((c) => c.id === categoryId);
+    if (!cat) return;
+
+    setQueue((prev) => [
+      ...prev,
+      {
+        key: crypto.randomUUID(),
+        type,
+        categoryId,
+        categoryName: cat.name,
+        categoryColor: cat.color,
+        amount: numericAmount,
+      },
+    ]);
+    // Reset numpad & kategori buat entry berikutnya, tapi TIPE tetap
+    // sama (biasanya orang catat beberapa item dengan tipe yang sama
+    // berturut-turut, misal beberapa item belanja).
+    setAmount("");
+    setCategoryId(null);
   }
 
-  function addRow() {
-    setRows((prev) => [...prev, newRow(prev[prev.length - 1]?.type ?? "expense")]);
+  function removeFromQueue(key: string) {
+    setQueue((prev) => prev.filter((q) => q.key !== key));
   }
 
   async function handleSaveAll() {
-    if (validRows.length === 0 || !defaultWallet || saving) return;
+    if (queue.length === 0 || !defaultWallet || saving) return;
     setSaving(true);
-
-    // Simpan berurutan (bukan Promise.all) — masing-masing createTransactionLocal
-    // itu 1 transaksi Dexie atomic sendiri (tulis tabel + antre sync_queue
-    // bareng). Jalanin sequential lebih aman buat urutan sync_queue tetap
-    // sesuai urutan input, dan tetap murni operasi lokal jadi cepet walau
-    // sequential (gak ada round-trip network sama sekali di sini).
-    for (const row of validRows) {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const item of queue) {
       await createTransactionLocal({
         household_id: householdId,
         wallet_id: defaultWallet.id,
-        category_id: row.categoryId!,
+        category_id: item.categoryId,
         user_id: userId,
-        amount: parseInt(row.amount, 10),
-        type: row.type,
-        note: row.note || null,
-        date: new Date().toISOString().slice(0, 10),
+        amount: item.amount,
+        type: item.type,
+        note: null,
+        date: today,
       });
     }
-
     setSaving(false);
-    setRows([newRow(), newRow()]);
+    reset();
     setOpen(false);
   }
 
@@ -90,11 +111,11 @@ export function BulkAddSheet({ categories, wallets, householdId, userId }: BulkA
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setRows([newRow(), newRow()]);
+        if (!next) reset();
       }}
     >
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Input massal">
+        <Button variant="ghost" size="icon-sm" className="bg-surface-muted" aria-label="Input beberapa sekaligus">
           <ListPlus className="h-4 w-4" />
         </Button>
       </SheetTrigger>
@@ -103,113 +124,118 @@ export function BulkAddSheet({ categories, wallets, householdId, userId }: BulkA
           Input beberapa sekaligus
         </SheetTitle>
         <p className="mt-1 text-sm text-ink-muted">
-          Cocok buat catat belanjaan/struk yang banyak item — isi tiap baris, simpan semua sekali tap.
+          Sama kayak input biasa — cuma tiap kali tap tambah, langsung lanjut ke transaksi berikutnya.
         </p>
 
-        <div className="mt-4 max-h-[50svh] space-y-3 overflow-y-auto pr-1">
-          {rows.map((row, i) => (
-            <div key={row.key} className="rounded-2xl border border-border bg-surface-muted p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => updateRow(row.key, { type: "expense", categoryId: null })}
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-xs font-medium",
-                      row.type === "expense" ? "bg-expense text-white" : "bg-surface text-ink-muted"
-                    )}
-                  >
-                    Keluar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => updateRow(row.key, { type: "income", categoryId: null })}
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-xs font-medium",
-                      row.type === "income" ? "bg-income text-white" : "bg-surface text-ink-muted"
-                    )}
-                  >
-                    Masuk
-                  </button>
-                </div>
-                {rows.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeRow(row.key)}
-                    aria-label={`Hapus baris ${i + 1}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-ink-muted hover:text-danger" />
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
-                {categories
-                  .filter((c) => c.type === row.type)
-                  .map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => updateRow(row.key, { categoryId: cat.id })}
-                      className={cn(
-                        "shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium",
-                        row.categoryId === cat.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-surface text-ink-muted"
-                      )}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
-              </div>
-
-              <div className="mt-2 flex gap-2">
-                <Input
-                  value={row.amount}
-                  onChange={(e) =>
-                    updateRow(row.key, { amount: e.target.value.replace(/\D/g, "") })
-                  }
-                  placeholder="Nominal"
-                  inputMode="numeric"
-                  className="h-10 flex-1 text-sm"
+        {/* Antrian transaksi yang udah ditambahin */}
+        {queue.length > 0 && (
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {queue.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => removeFromQueue(item.key)}
+                className="group flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface-muted py-1.5 pl-3 pr-2 text-xs font-medium text-ink"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: item.categoryColor }}
                 />
-                <Input
-                  value={row.note}
-                  onChange={(e) => updateRow(row.key, { note: e.target.value })}
-                  placeholder="Catatan (opsional)"
-                  className="h-10 flex-[1.3] text-sm"
-                />
-              </div>
-            </div>
+                {item.categoryName} · {item.type === "income" ? "+" : "-"}
+                {formatIDR(item.amount)}
+                <X className="h-3 w-3 text-ink-muted group-hover:text-danger" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Toggle income/expense — persis quick-add */}
+        <div className="mb-4 mt-4 flex rounded-2xl bg-surface-muted p-1">
+          <button
+            type="button"
+            onClick={() => {
+              setType("expense");
+              setCategoryId(null);
+            }}
+            className={cn(
+              "flex-1 rounded-xl py-2 text-sm font-semibold transition-colors",
+              type === "expense" ? "bg-surface text-expense shadow-sm" : "text-ink-muted"
+            )}
+          >
+            Pengeluaran
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setType("income");
+              setCategoryId(null);
+            }}
+            className={cn(
+              "flex-1 rounded-xl py-2 text-sm font-semibold transition-colors",
+              type === "income" ? "bg-surface text-income shadow-sm" : "text-ink-muted"
+            )}
+          >
+            Pemasukan
+          </button>
+        </div>
+
+        {/* Kategori — persis quick-add */}
+        <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+          {visibleCategories.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setCategoryId(cat.id)}
+              className={cn(
+                "flex shrink-0 flex-col items-center gap-1 rounded-2xl border px-4 py-3 text-xs font-medium transition-colors",
+                categoryId === cat.id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-surface text-ink-muted"
+              )}
+            >
+              <span
+                className="flex h-9 w-9 items-center justify-center rounded-full text-sm"
+                style={{ backgroundColor: `${cat.color}22`, color: cat.color }}
+              >
+                {cat.name.charAt(0)}
+              </span>
+              {cat.name}
+            </button>
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={addRow}
-          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border py-2.5 text-sm font-medium text-ink-muted"
-        >
-          <Plus className="h-4 w-4" />
-          Tambah baris
-        </button>
-
-        <div className="mt-5 flex items-center justify-between rounded-2xl bg-surface-muted px-4 py-3">
-          <span className="text-sm text-ink-muted">
-            {validRows.length} transaksi siap disimpan
-          </span>
-          <span className="text-sm font-semibold tabular-nums text-ink">
-            {formatIDR(totalAmount)}
-          </span>
-        </div>
+        <Numpad value={amount} onChange={setAmount} />
 
         <Button
           size="lg"
-          className="mt-4 w-full"
-          disabled={validRows.length === 0 || saving || !defaultWallet}
-          onClick={handleSaveAll}
+          variant="outline"
+          className="mt-5 w-full"
+          disabled={!categoryId || parseInt(amount || "0", 10) <= 0}
+          onClick={handleAddToQueue}
         >
-          {saving ? "Menyimpan..." : `Simpan ${validRows.length || ""} transaksi`}
+          <Check className="h-4 w-4" />
+          Tambah ke antrian
         </Button>
+
+        {queue.length > 0 && (
+          <>
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-surface-muted px-4 py-3">
+              <span className="text-sm text-ink-muted">{queue.length} transaksi diantre</span>
+              <span
+                className={cn(
+                  "text-sm font-semibold tabular-nums",
+                  total >= 0 ? "text-income" : "text-expense"
+                )}
+              >
+                {total >= 0 ? "+" : "-"}
+                {formatIDR(Math.abs(total))}
+              </span>
+            </div>
+            <Button size="lg" className="mt-3 w-full" disabled={saving} onClick={handleSaveAll}>
+              {saving ? "Menyimpan..." : `Simpan ${queue.length} transaksi`}
+            </Button>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

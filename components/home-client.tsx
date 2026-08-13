@@ -83,7 +83,7 @@ export function HomeClient({ fallbackName }: HomeClientProps) {
       : `${DATE_RANGE_LABELS[dateRange]} · ${extraFilterCount} filter`;
 
   return (
-    <main className="min-h-svh bg-background pb-6">
+    <main className="theme-main min-h-svh bg-background pb-6">
       <SyncProvider householdId={household.id} />
       <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-3 px-6 pt-6">
         <p className="font-display text-lg font-semibold text-ink">

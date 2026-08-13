@@ -181,6 +181,24 @@ Sebelum coding sama sekali, disepakati dulu:
 - `useTheme` hook pakai lazy initial state (bukan `useEffect`+`setState`) — pola yang sama kayak fix sebelumnya
 - `ThemePickerSheet` — grid swatch, akses dari menu Pengaturan → "Tema tampilan". Ganti tema gak ngaruh ke data sama sekali (murni visual, client-side only)
 
+**Bug ditemukan & fixed setelah dicoba:**
+- 🐛 **Status bar HP gak ikut tema** — `<meta name="theme-color">` cuma di-set statis sekali via Next.js viewport export, gak update pas user ganti tema di runtime. Fixed: `applyTheme()` sekarang juga update meta tag itu langsung, per tema punya `statusBarColor` sendiri.
+- 🐛 **Tema Glass gak "kaca" beneran** — `<main>` masih ngecat solid `--background` di atas gradient body-nya, nutupin efek blur sama sekali (padahal card-nya udah translucent). Fixed: `<main>` transparan khusus pas tema glass aktif, biar gradient tembus di belakang card yang blur.
+
+### Karakter Maskot per Tema
+- `ThemeMascot` — SVG flat illustration kecil, beda tiap tema (sprout buat Klasik, kristal es buat Glass, sakura buat Pink, pohon natal kecil buat Natal, orang santai + payung pantai buat Summer)
+- Ditaruh di pojok kanan atas `BalanceCard`, semi-transparan, gak ganggu keterbacaan angka
+
+### Bulk Add — Redesign (versi awal dirasa susah)
+- Versi pertama (form grid multi-baris sekaligus) dirasa ribet — diganti pola **"quick-add yang diulang"**: kategori → numpad → tap "Tambah ke antrian" → otomatis reset buat entry berikutnya, chip antrian keliatan di atas (bisa di-tap buat hapus), baru "Simpan semua" di akhir
+- Lebih familiar karena gerakannya identik sama quick-add biasa yang udah dikenal, cuma diulang beberapa kali sebelum commit
+
+### Micro-interactions
+- Card masuk dengan fade+slide halus pas render (`animate-enter`, dipakai di `theme-card-shell`)
+- Angka saldo utama re-animate ("pop" halus) tiap kali berubah (misal ganti filter) — `animate-number`
+- `tap-feedback` class: semua tombol (`Button` component + beberapa custom button kunci) sekarang ada scale-down halus pas ditekan, bukan cuma perubahan warna doang
+- Semua animasi otomatis nonaktif kalau user punya `prefers-reduced-motion` aktif di device
+
 ---
 
 ## 🌐 Deploy
