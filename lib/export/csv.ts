@@ -31,16 +31,17 @@ const HEADERS = [
 ];
 
 /**
- * Bangun CSV dari list transaksi yang UDAH DIFILTER (dari
- * listTransactions() di lib/db/transactions.ts). Fungsi ini murni
- * transformasi data lokal — gak ada query tambahan ke Dexie atau
- * Supabase di sini sama sekali, semua lookup (nama kategori/dompet/
- * member) pakai data yang udah di-load di memory.
+ * Bangun CSV dari list transaksi yang UDAH DIFILTER.
+ * Menambahkan baris total pemasukan, pengeluaran, dan saldo akhir 
+ * di bagian bawah agar laporan terlihat rapi dan profesional saat dibuka di Excel.
  */
 export function transactionsToCsv(
   transactions: Transaction[],
   ctx: CsvContext
 ): string {
+  let totalIncome = 0;
+  let totalExpense = 0;
+
   const rows = transactions.map((tx) => {
     const category = ctx.categories.find((c) => c.id === tx.category_id);
     const wallet = ctx.wallets.find((w) => w.id === tx.wallet_id);
@@ -49,18 +50,47 @@ export function transactionsToCsv(
         ? "Kamu"
         : (ctx.members.find((m) => m.id === tx.user_id)?.name ?? "?");
 
+    // Kalkulasi akumulasi total
+    if (tx.type === "income") {
+      totalIncome += tx.amount;
+    } else {
+      // Asumsi tipe selain income adalah pengeluaran (expense)
+      totalExpense += tx.amount;
+    }
+
     return [
       tx.date,
       tx.type === "income" ? "Pemasukan" : "Pengeluaran",
-      category?.name ?? "",
-      wallet?.name ?? "",
+      category?.name ?? "-", // Pakai "-" jika kosong agar cell di Excel tidak benar-benar blank
+      wallet?.name ?? "-",
       String(tx.amount),
       tx.note ?? "",
       memberName,
     ];
   });
 
-  const lines = [HEADERS, ...rows].map((row) =>
+  const finalBalance = totalIncome - totalExpense;
+
+  // Membuat baris pemisah (kosong) agar rapi secara visual
+  const separatorRow = ["", "", "", "", "", "", ""];
+
+  // Membuat baris rekap total. 
+  // Label disejajarkan di kolom ke-4 (Dompet) dan Nilai di kolom ke-5 (Nominal)
+  const incomeRow = ["", "", "", "Total Pemasukan", String(totalIncome), "", ""];
+  const expenseRow = ["", "", "", "Total Pengeluaran", String(totalExpense), "", ""];
+  const balanceRow = ["", "", "", "Saldo Akhir", String(finalBalance), "", ""];
+
+  // Gabungkan Headers, Data Transaksi, Pemisah, dan Rekap
+  const allRows = [
+    HEADERS,
+    ...rows,
+    separatorRow,
+    incomeRow,
+    expenseRow,
+    balanceRow
+  ];
+
+  const lines = allRows.map((row) =>
     row.map(escapeCsvField).join(",")
   );
 
